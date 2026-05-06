@@ -1068,6 +1068,7 @@ function openPlaysDialog(gameId) {
         <div class="batter-info">
           <span style="font-size:.8rem;color:var(--color-text-muted)">打者</span>
           <strong>${batterIdx + 1}番: ${batter ? (batter.number != null ? `<span class="num-badge">#${batter.number}</span> ` : '') + escapeHtml(batter.name) : '?'}${entry.position ? ` <span style="font-size:.8rem;color:var(--color-text-muted);font-weight:normal">(${escapeHtml(entry.position)})</span>` : ''}</strong>
+          <button type="button" class="btn btn-sm" id="sub-batter" style="margin-left:auto">🔄 交代</button>
         </div>
         <div class="result-grid">${resultButtons}</div>
         <div class="entry-bottom-bar">
@@ -1154,6 +1155,71 @@ function openPlaysDialog(gameId) {
         });
       });
     });
+    document.getElementById('sub-batter').addEventListener('click', () => {
+      openSubstitutePicker(batterIdx);
+    });
+  }
+
+  // ----- 打者交代ポップアップ -----
+  function openSubstitutePicker(lineupPos) {
+    const currentEntry = lineup[lineupPos];
+    const currentMember = memberById(currentEntry.memberId);
+    const usedIds = new Set(lineup.map((e) => e.memberId));
+    // 同じ位置の現メンバーは選べる必要なし、ほかの位置にいる人も除外
+    const available = membersState.members.filter((m) => !usedIds.has(m.id));
+    const sortedAvail = [...available].sort((a, b) => {
+      const na = a.number ?? 999, nb = b.number ?? 999;
+      if (na !== nb) return na - nb;
+      return (a.name || '').localeCompare(b.name || '', 'ja');
+    });
+
+    if (sortedAvail.length === 0) {
+      showToast('打順に登録されていないメンバーがいません。新規メンバー登録か、打順タブで調整してください。', 'error');
+      return;
+    }
+
+    const html = `
+      <div class="play-edit-popup-backdrop" id="sub-picker">
+        <div class="play-edit-popup">
+          <h4>🔄 打者を交代</h4>
+          <p style="font-size:.85rem;color:var(--color-text-muted);margin:0 0 8px">
+            <strong>${lineupPos + 1}番:</strong> ${currentMember ? `${currentMember.number != null ? `#${currentMember.number} ` : ''}${escapeHtml(currentMember.name)}` : '?'}
+            の交代相手を選びます。
+          </p>
+          <p style="font-size:.75rem;color:var(--color-text-muted);margin:0 0 10px">
+            ※ 過去の打席記録は元の選手のままです。次の打席から新しい選手で記録されます。
+          </p>
+          <div class="member-pool" style="max-height:300px;overflow:auto;display:flex;flex-direction:column">
+            ${sortedAvail.map((m) => `
+              <button type="button" class="member-pool-btn" data-pick="${m.id}">
+                ${m.number != null ? `<span class="num-badge">#${m.number}</span> ` : ''}${escapeHtml(m.name)}
+              </button>
+            `).join('')}
+          </div>
+          <div class="modal-actions" style="margin-top:12px">
+            <button type="button" class="btn btn-block" id="sub-cancel">キャンセル</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+    const backdrop = document.getElementById('sub-picker');
+    backdrop.querySelectorAll('[data-pick]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const newMemberId = btn.dataset.pick;
+        const newMember = memberById(newMemberId);
+        // ポジションは引き継ぐ
+        lineup[lineupPos] = {
+          memberId: newMemberId,
+          position: currentEntry.position,
+        };
+        backdrop.remove();
+        renderOffenseTab();
+        renderLineupTab();
+        showToast(`${currentMember ? currentMember.name : '?'} → ${newMember ? newMember.name : '?'} に交代`, 'success');
+      });
+    });
+    document.getElementById('sub-cancel').addEventListener('click', () => backdrop.remove());
   }
 
   // ----- 守備タブ -----
