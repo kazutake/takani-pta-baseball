@@ -4,7 +4,7 @@
       "id": "g_motkzajgqf5f",
       "date": "2026-05-10",
       "opponent": "桃一",
-      "ourScore": 2,
+      "ourScore": 5,
       "theirScore": 0,
       "result": "win",
       "isHome": false,
@@ -200,6 +200,66 @@
           "inning": 5,
           "batterId": "m_motkvjfh8tbi",
           "result": "homeRun",
+          "rbi": 3
+        },
+        {
+          "inning": 5,
+          "batterId": "m_motkv9ascdpx",
+          "result": "strikeout",
+          "rbi": 0
+        },
+        {
+          "inning": 5,
+          "batterId": "m_motkv4fnrkmz",
+          "result": "flyOut",
+          "rbi": 0
+        },
+        {
+          "inning": 5,
+          "batterId": "m_motkvdpsv10y",
+          "result": "groundOut",
+          "rbi": 0
+        },
+        {
+          "inning": 6,
+          "batterId": "m_motkyugdfake",
+          "result": "groundOut",
+          "rbi": 0
+        },
+        {
+          "inning": 6,
+          "batterId": "m_motkxo2u89qy",
+          "result": "flyOut",
+          "rbi": 0
+        },
+        {
+          "inning": 6,
+          "batterId": "m_motkwoito899",
+          "result": "strikeout",
+          "rbi": 0
+        },
+        {
+          "inning": 7,
+          "batterId": "m_motkwzcfqnxm",
+          "result": "flyOut",
+          "rbi": 0
+        },
+        {
+          "inning": 7,
+          "batterId": "m_moth46wbgufq",
+          "result": "walk",
+          "rbi": 0
+        },
+        {
+          "inning": 7,
+          "batterId": "m_motkvjfh8tbi",
+          "result": "strikeout",
+          "rbi": 0
+        },
+        {
+          "inning": 7,
+          "batterId": "m_motkv9ascdpx",
+          "result": "flyOut",
           "rbi": 0
         }
       ],
@@ -291,6 +351,66 @@
         {
           "inning": 4,
           "result": "groundOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 5,
+          "result": "strikeout",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 5,
+          "result": "flyOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 5,
+          "result": "reachedOnError",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 5,
+          "result": "groundOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 6,
+          "result": "strikeout",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 6,
+          "result": "flyOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 6,
+          "result": "groundOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 7,
+          "result": "strikeout",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 7,
+          "result": "groundOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 7,
+          "result": "flyOut",
           "rbi": 0,
           "pitcherId": "m_motkvjfh8tbi"
         }
