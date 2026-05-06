@@ -168,6 +168,36 @@
           "batterId": "m_motjvwc1pwxc",
           "result": "flyOut",
           "rbi": 0
+        },
+        {
+          "inning": 6,
+          "batterId": "m_motjwpmx3hrh",
+          "result": "single",
+          "rbi": 0
+        },
+        {
+          "inning": 6,
+          "batterId": "m_motjx3yyzlq5",
+          "result": "double",
+          "rbi": 0
+        },
+        {
+          "inning": 6,
+          "batterId": "m_motjwag167wu",
+          "result": "flyOut",
+          "rbi": 0
+        },
+        {
+          "inning": 6,
+          "batterId": "m_motjw1nn8jkc",
+          "result": "strikeout",
+          "rbi": 0
+        },
+        {
+          "inning": 6,
+          "batterId": "m_moth46wbgufq",
+          "result": "groundOut",
+          "rbi": 0
         }
       ]
     }
