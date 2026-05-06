@@ -794,6 +794,14 @@ table.scoreboard tr.us-row td:first-child {
   max-height: 92vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden; /* override .modal の overflow:auto。中身でスクロール */
+  padding: 16px;
+}
+.plays-modal > h3,
+.plays-modal > .card-meta,
+.plays-modal > .play-tabs,
+.plays-modal > .modal-actions {
+  flex-shrink: 0;
 }
 .play-tabs {
   display: flex;
@@ -818,7 +826,45 @@ table.scoreboard tr.us-row td:first-child {
 }
 .play-tab-content {
   flex: 1;
-  overflow: auto;
+  min-height: 0;
+}
+#tab-lineup {
+  overflow-y: auto;
+}
+#tab-offense,
+#tab-defense {
+  flex-direction: column; /* 表示時に display:flex のとき効く */
+  overflow: hidden;
+}
+.play-entry {
+  flex-shrink: 0;
+}
+.entry-bottom-bar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+.entry-bottom-bar .btn-primary {
+  min-height: 48px;
+  font-weight: 700;
+  font-size: 1rem;
+}
+.entry-bottom-bar .btn-primary:disabled {
+  opacity: 0.4;
+}
+.plays-list-title {
+  flex-shrink: 0;
+  margin: 10px 0 6px;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+.plays-list-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0 -4px;
+  padding: 0 4px;
 }
 
 /* 打順リスト */
@@ -931,8 +977,8 @@ table.scoreboard tr.us-row td:first-child {
 .play-state {
   background: #eef4fb;
   border-radius: 8px;
-  padding: 10px 12px;
-  margin-bottom: 12px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
 }
 .play-state-row {
   display: flex;
@@ -959,8 +1005,8 @@ table.scoreboard tr.us-row td:first-child {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 6px;
-  padding: 10px 12px;
-  margin-bottom: 10px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -973,19 +1019,20 @@ table.scoreboard tr.us-row td:first-child {
 }
 .result-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-  margin-bottom: 12px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
 }
 .result-btn {
-  padding: 12px 4px;
-  border-radius: 8px;
+  padding: 10px 2px;
+  border-radius: 6px;
   border: 1.5px solid var(--color-border);
   background: var(--color-surface);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  min-height: 42px;
 }
 .result-btn:active { transform: scale(0.96); }
 .result-btn.is-out {
@@ -1008,9 +1055,10 @@ table.scoreboard tr.us-row td:first-child {
   align-items: center;
   justify-content: space-between;
   background: #fafbfc;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-radius: 8px;
-  margin-bottom: 10px;
+  margin-bottom: 0;
+  gap: 8px;
 }
 .plays-list {
   display: flex;

@@ -887,8 +887,8 @@ function openPlaysDialog(gameId) {
     activeTab = tab;
     modal.querySelectorAll('.play-tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === tab));
     document.getElementById('tab-lineup').style.display = tab === 'lineup' ? 'block' : 'none';
-    document.getElementById('tab-offense').style.display = tab === 'offense' ? 'block' : 'none';
-    document.getElementById('tab-defense').style.display = tab === 'defense' ? 'block' : 'none';
+    document.getElementById('tab-offense').style.display = tab === 'offense' ? 'flex' : 'none';
+    document.getElementById('tab-defense').style.display = tab === 'defense' ? 'flex' : 'none';
   }
   modal.querySelectorAll('.play-tab').forEach((t) => {
     t.addEventListener('click', () => setTab(t.dataset.tab));
@@ -1041,37 +1041,42 @@ function openPlaysDialog(gameId) {
       }).join('');
 
     tabEl.innerHTML = `
-      <div class="play-state">
-        <div class="play-state-row">
-          <span class="play-state-label">${inning}回</span>
-          <span class="play-state-out">アウト ${outs}/3</span>
-          <span class="play-state-runs">この回 ${inningRuns}点</span>
+      <div class="play-entry">
+        <div class="play-state">
+          <div class="play-state-row">
+            <span class="play-state-label">${inning}回</span>
+            <span class="play-state-out">アウト ${outs}/3</span>
+            <span class="play-state-runs">この回 ${inningRuns}点</span>
+          </div>
+          <div class="play-state-row" style="margin-top:6px">
+            <button type="button" class="btn btn-sm" id="prev-inning">前の回</button>
+            <button type="button" class="btn btn-sm" id="next-inning">次の回</button>
+            ${manualInning != null ? '<span style="font-size:.7rem;color:var(--color-warning);margin-left:8px">手動指定中</span>' : ''}
+          </div>
         </div>
-        <div class="play-state-row" style="margin-top:6px">
-          <button type="button" class="btn btn-sm" id="prev-inning">前の回</button>
-          <button type="button" class="btn btn-sm" id="next-inning">次の回</button>
-          ${manualInning != null ? '<span style="font-size:.7rem;color:var(--color-warning);margin-left:8px">手動指定中</span>' : ''}
+        <div class="batter-info">
+          <span style="font-size:.8rem;color:var(--color-text-muted)">打者</span>
+          <strong>${batterIdx + 1}番: ${batter ? (batter.number != null ? `<span class="num-badge">#${batter.number}</span> ` : '') + escapeHtml(batter.name) : '?'}${entry.position ? ` <span style="font-size:.8rem;color:var(--color-text-muted);font-weight:normal">(${escapeHtml(entry.position)})</span>` : ''}</strong>
+        </div>
+        <div class="result-grid">${resultButtons}</div>
+        <div class="entry-bottom-bar">
+          <div class="rbi-controls" style="flex:1;margin:0">
+            <span class="stat-label">打点</span>
+            <div class="stat-controls">
+              <button type="button" class="stat-btn" id="rbi-dec">−</button>
+              <span class="stat-value" id="rbi-display">${pendingRBI}</span>
+              <button type="button" class="stat-btn stat-btn-plus" id="rbi-inc">+</button>
+            </div>
+          </div>
+          <button type="button" class="btn btn-primary" id="confirm-pa" ${!pendingResult ? 'disabled' : ''} style="flex:1">
+            記録 ▶
+          </button>
         </div>
       </div>
-      <div class="batter-info">
-        <span style="font-size:.8rem;color:var(--color-text-muted)">打者</span>
-        <strong>${batterIdx + 1}番: ${batter ? (batter.number != null ? `<span class="num-badge">#${batter.number}</span> ` : '') + escapeHtml(batter.name) : '?'}${entry.position ? ` <span style="font-size:.8rem;color:var(--color-text-muted);font-weight:normal">(${escapeHtml(entry.position)})</span>` : ''}</strong>
+      <h5 class="plays-list-title">記録済みの打席 (${plays.length})</h5>
+      <div class="plays-list-scroll">
+        <div class="plays-list">${playsList}</div>
       </div>
-      <div class="result-grid">${resultButtons}</div>
-      <div class="rbi-controls">
-        <span class="stat-label">打点</span>
-        <div class="stat-controls">
-          <button type="button" class="stat-btn" id="rbi-dec">−</button>
-          <span class="stat-value" id="rbi-display">${pendingRBI}</span>
-          <button type="button" class="stat-btn stat-btn-plus" id="rbi-inc">+</button>
-        </div>
-      </div>
-      <button type="button" class="btn btn-primary btn-block" id="confirm-pa" ${!pendingResult ? 'disabled' : ''}>
-        この打席を記録 ▶
-      </button>
-
-      <h5 style="margin:18px 0 6px;font-size:.85rem;color:var(--color-text-muted)">記録済みの打席 (${plays.length})</h5>
-      <div class="plays-list">${playsList}</div>
     `;
 
     tabEl.querySelectorAll('.result-btn').forEach((btn) => {
@@ -1171,43 +1176,45 @@ function openPlaysDialog(gameId) {
       }).join('');
 
     tabEl.innerHTML = `
-      <div class="play-state">
-        <div class="play-state-row">
-          <span class="play-state-label">${inning}回</span>
-          <span class="play-state-out">アウト ${outs}/3</span>
-          <span class="play-state-runs" style="color:var(--color-danger)">失点 ${inningRuns}</span>
+      <div class="play-entry">
+        <div class="play-state">
+          <div class="play-state-row">
+            <span class="play-state-label">${inning}回</span>
+            <span class="play-state-out">アウト ${outs}/3</span>
+            <span class="play-state-runs" style="color:var(--color-danger)">失点 ${inningRuns}</span>
+          </div>
+          <div class="play-state-row" style="margin-top:6px">
+            <button type="button" class="btn btn-sm" id="def-prev-inning">前の回</button>
+            <button type="button" class="btn btn-sm" id="def-next-inning">次の回</button>
+            ${manualDefInning != null ? '<span style="font-size:.7rem;color:var(--color-warning);margin-left:8px">手動指定中</span>' : ''}
+          </div>
         </div>
-        <div class="play-state-row" style="margin-top:6px">
-          <button type="button" class="btn btn-sm" id="def-prev-inning">前の回</button>
-          <button type="button" class="btn btn-sm" id="def-next-inning">次の回</button>
-          ${manualDefInning != null ? '<span style="font-size:.7rem;color:var(--color-warning);margin-left:8px">手動指定中</span>' : ''}
+        <div class="batter-info">
+          <span style="font-size:.8rem;color:var(--color-text-muted)">投手</span>
+          ${pitcher
+            ? `<strong>${pitcher.number != null ? `<span class="num-badge">#${pitcher.number}</span> ` : ''}${escapeHtml(pitcher.name)}</strong>`
+            : '<strong style="color:var(--color-warning)">未設定</strong>'}
+          <button type="button" class="btn btn-sm" id="change-pitcher" style="margin-left:auto">変更</button>
+        </div>
+        <div class="result-grid">${resultButtons}</div>
+        <div class="entry-bottom-bar">
+          <div class="rbi-controls" style="flex:1;margin:0">
+            <span class="stat-label">失点</span>
+            <div class="stat-controls">
+              <button type="button" class="stat-btn" id="def-rbi-dec">−</button>
+              <span class="stat-value" id="def-rbi-display">${pendingDefRBI}</span>
+              <button type="button" class="stat-btn stat-btn-plus" id="def-rbi-inc">+</button>
+            </div>
+          </div>
+          <button type="button" class="btn btn-primary" id="confirm-def-pa" ${!pendingDefResult ? 'disabled' : ''} style="flex:1">
+            記録 ▶
+          </button>
         </div>
       </div>
-      <div class="batter-info">
-        <span style="font-size:.8rem;color:var(--color-text-muted)">投手</span>
-        ${pitcher
-          ? `<strong>${pitcher.number != null ? `<span class="num-badge">#${pitcher.number}</span> ` : ''}${escapeHtml(pitcher.name)}</strong>`
-          : '<strong style="color:var(--color-warning)">未設定</strong>'}
-        <button type="button" class="btn btn-sm" id="change-pitcher" style="margin-left:auto">変更</button>
+      <h5 class="plays-list-title">記録済みの打席 (${oppPlays.length})</h5>
+      <div class="plays-list-scroll">
+        <div class="plays-list">${playsList}</div>
       </div>
-      <p style="font-size:.75rem;color:var(--color-text-muted);margin:0 0 6px">
-        相手バッターの結果を入力すると、当チーム投手の成績が自動集計されます。
-      </p>
-      <div class="result-grid">${resultButtons}</div>
-      <div class="rbi-controls">
-        <span class="stat-label">失点（この打席で）</span>
-        <div class="stat-controls">
-          <button type="button" class="stat-btn" id="def-rbi-dec">−</button>
-          <span class="stat-value" id="def-rbi-display">${pendingDefRBI}</span>
-          <button type="button" class="stat-btn stat-btn-plus" id="def-rbi-inc">+</button>
-        </div>
-      </div>
-      <button type="button" class="btn btn-primary btn-block" id="confirm-def-pa" ${!pendingDefResult ? 'disabled' : ''}>
-        この打席を記録 ▶
-      </button>
-
-      <h5 style="margin:18px 0 6px;font-size:.85rem;color:var(--color-text-muted)">記録済みの打席 (${oppPlays.length})</h5>
-      <div class="plays-list">${playsList}</div>
     `;
 
     tabEl.querySelectorAll('.result-btn').forEach((btn) => {
