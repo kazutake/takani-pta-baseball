@@ -265,8 +265,105 @@
           "rbi": 0
         }
       ],
-      "oppPlays": [],
-      "finalized": true
+      "oppPlays": [
+        {
+          "inning": 1,
+          "result": "groundOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 1,
+          "result": "flyOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 1,
+          "result": "strikeout",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 2,
+          "result": "flyOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 2,
+          "result": "strikeout",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 2,
+          "result": "groundOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 3,
+          "result": "flyOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 3,
+          "result": "groundOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 3,
+          "result": "groundOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 4,
+          "result": "otherOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 4,
+          "result": "groundOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 4,
+          "result": "flyOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 5,
+          "result": "strikeout",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 5,
+          "result": "flyOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 5,
+          "result": "groundOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 6,
+          "result": "otherOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        }
+      ],
+      "finalized": false
     }
   ]
 }
