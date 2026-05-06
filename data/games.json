@@ -108,6 +108,66 @@
           "batterId": "m_motjwfehvqfi",
           "result": "flyOut",
           "rbi": 0
+        },
+        {
+          "inning": 3,
+          "batterId": "m_motjvwc1pwxc",
+          "result": "hbp",
+          "rbi": 0
+        },
+        {
+          "inning": 3,
+          "batterId": "m_motjwpmx3hrh",
+          "result": "flyOut",
+          "rbi": 0
+        },
+        {
+          "inning": 3,
+          "batterId": "m_motjx3yyzlq5",
+          "result": "groundOut",
+          "rbi": 0
+        },
+        {
+          "inning": 3,
+          "batterId": "m_motjwag167wu",
+          "result": "groundOut",
+          "rbi": 0
+        },
+        {
+          "inning": 4,
+          "batterId": "m_motjw1nn8jkc",
+          "result": "flyOut",
+          "rbi": 0
+        },
+        {
+          "inning": 4,
+          "batterId": "m_moth46wbgufq",
+          "result": "flyOut",
+          "rbi": 0
+        },
+        {
+          "inning": 4,
+          "batterId": "m_motjwv3tufud",
+          "result": "flyOut",
+          "rbi": 0
+        },
+        {
+          "inning": 5,
+          "batterId": "m_motjxi3p1xyf",
+          "result": "flyOut",
+          "rbi": 0
+        },
+        {
+          "inning": 5,
+          "batterId": "m_motjwfehvqfi",
+          "result": "groundOut",
+          "rbi": 0
+        },
+        {
+          "inning": 5,
+          "batterId": "m_motjvwc1pwxc",
+          "result": "flyOut",
+          "rbi": 0
         }
       ]
     }
