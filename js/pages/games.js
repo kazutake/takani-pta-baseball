@@ -390,10 +390,14 @@ function renderGameCard(g) {
     : null;
   const photos = g.photos || [];
   const statsCount = g.playerStats ? Object.keys(g.playerStats).length : 0;
+  const hasPlays = (g.ourPlays || []).length > 0 || (g.oppPlays || []).length > 0;
+  const finalizedBadge = g.finalized
+    ? '<span class="badge" style="background:var(--color-success);color:#fff;margin-left:4px">🏁 確定</span>'
+    : (hasPlays ? '<span class="badge" style="background:#fff3cd;color:#5c4400;margin-left:4px">未確定</span>' : '');
   return `
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
-        <div class="card-meta">${escapeHtml(formatDate(g.date))} ${badge}</div>
+        <div class="card-meta">${escapeHtml(formatDate(g.date))} ${badge}${finalizedBadge}</div>
         <div style="display:flex;gap:4px">
           <button class="btn btn-sm" data-edit="${g.id}">編集</button>
           <button class="btn btn-sm btn-danger" data-delete="${g.id}">削除</button>
@@ -856,13 +860,14 @@ function openPlaysDialog(gameId) {
   let currentPitcherId = oppPlays.length > 0
     ? oppPlays[oppPlays.length - 1].pitcherId
     : null;
+  let finalized = !!game.finalized;
 
   const memberById = (id) => membersState.members.find((m) => m.id === id);
 
   const html = `
     <div class="modal-backdrop open" id="plays-modal">
       <div class="modal plays-modal">
-        <h3 style="margin:0 0 4px">📝 打席記録</h3>
+        <h3 style="margin:0 0 4px">📝 打席記録 ${finalized ? '<span class="badge badge-win" style="margin-left:4px">🏁 確定済</span>' : ''}</h3>
         <div class="card-meta" style="margin-bottom:8px">
           ${escapeHtml(formatDate(game.date))} vs ${escapeHtml(game.opponent || '')}
         </div>
@@ -874,7 +879,8 @@ function openPlaysDialog(gameId) {
         <div class="play-tab-content" id="tab-lineup"></div>
         <div class="play-tab-content" id="tab-offense"></div>
         <div class="play-tab-content" id="tab-defense"></div>
-        <div class="modal-actions" style="margin-top:12px">
+        <div class="finalize-bar" id="finalize-bar"></div>
+        <div class="modal-actions" style="margin-top:8px">
           <button type="button" class="btn" id="plays-cancel">キャンセル</button>
           <button type="button" class="btn btn-primary" id="plays-save">保存</button>
         </div>
@@ -1435,24 +1441,55 @@ function openPlaysDialog(gameId) {
     });
   }
 
+  // ----- 試合終了 / 確定解除バー -----
+  function renderFinalizeBar() {
+    const bar = document.getElementById('finalize-bar');
+    bar.innerHTML = finalized
+      ? `
+        <button type="button" class="btn btn-block" id="unfinalize-btn" style="background:#fffbe6;border-color:#f0d160;color:#5c4400;font-weight:600">
+          ✓ スコア確定済み — タップで再編集（確定解除）
+        </button>`
+      : `
+        <button type="button" class="btn btn-block btn-accent" id="finalize-btn" style="font-weight:700;font-size:1rem;padding:14px;color:#fff">
+          🏁 試合終了 / スコア確定
+        </button>`;
+    if (finalized) {
+      document.getElementById('unfinalize-btn').addEventListener('click', () => {
+        if (!confirm('確定を解除して再編集モードに戻しますか？')) return;
+        finalized = false;
+        renderFinalizeBar();
+        savePlays({ closeAfter: false, message: '確定解除' });
+      });
+    } else {
+      document.getElementById('finalize-btn').addEventListener('click', () => {
+        if (!confirm('試合を終了してスコアを確定しますか？\n（後で再編集も可能です）')) return;
+        finalized = true;
+        renderFinalizeBar();
+        savePlays({ closeAfter: true, message: '🏁 試合終了 - スコア確定' });
+      });
+    }
+  }
+
   setTab(activeTab);
   renderLineupTab();
   renderOffenseTab();
   renderDefenseTab();
+  renderFinalizeBar();
 
-  document.getElementById('plays-cancel').addEventListener('click', () => modal.remove());
-  document.getElementById('plays-save').addEventListener('click', async () => {
+  async function savePlays({ closeAfter = true, message = '保存しました' } = {}) {
     const saveBtn = document.getElementById('plays-save');
-    saveBtn.disabled = true;
-    saveBtn.textContent = '保存中...';
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = '保存中...';
+    }
     try {
       let updatedGame = {
         ...game,
         ourLineup: lineup,
         ourPlays: plays,
         oppPlays: oppPlays,
+        finalized,
       };
-      // スコア再計算（plays/oppPlays から打点合計）
       if (plays.length > 0 || oppPlays.length > 0) {
         const ourTotal = plays.reduce((s, p) => s + (p.rbi || 0), 0);
         const theirTotal = oppPlays.reduce((s, p) => s + (p.rbi || 0), 0);
@@ -1470,17 +1507,27 @@ function openPlaysDialog(gameId) {
         CONFIG.DATA_PATHS.games,
         next,
         gamesSha,
-        `update plays for game ${game.date} vs ${game.opponent}`,
+        `update plays for game ${game.date} vs ${game.opponent}${finalized ? ' (finalized)' : ''}`,
       );
       gamesState = next;
-      modal.remove();
+      // game オブジェクトを更新（再編集時に整合性保つため）
+      Object.assign(game, updatedGame);
+      if (closeAfter) modal.remove();
       render();
-      showToast('打席記録を保存しました', 'success');
+      showToast(message, 'success');
     } catch (err) {
-      saveBtn.disabled = false;
-      saveBtn.textContent = '保存';
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = '保存';
+      }
       if (err instanceof ConflictError) showToast(err.message, 'error');
       else showToast('保存に失敗しました: ' + err.message, 'error');
+      throw err;
     }
+  }
+
+  document.getElementById('plays-cancel').addEventListener('click', () => modal.remove());
+  document.getElementById('plays-save').addEventListener('click', () => {
+    savePlays({ closeAfter: true, message: '打席記録を保存しました' });
   });
 }
