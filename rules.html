@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1f4e8c" />
+  <title>集計ルール | 高井戸第二小学校PTA野球部</title>
+  <link rel="stylesheet" href="css/style.css?v=6" />
+  <style>
+    .rules-section { margin-bottom: 20px; }
+    .rules-section h3 {
+      font-size: 1rem;
+      color: var(--color-primary);
+      margin: 0 0 8px;
+      padding-bottom: 4px;
+      border-bottom: 2px solid var(--color-primary);
+    }
+    .rules-section h4 {
+      font-size: .9rem;
+      margin: 12px 0 4px;
+      color: var(--color-text);
+    }
+    .rules-section p, .rules-section li {
+      font-size: .9rem;
+      line-height: 1.7;
+      color: var(--color-text);
+    }
+    .rules-section ul {
+      padding-left: 20px;
+      margin: 6px 0;
+    }
+    .rules-section .formula {
+      background: #f6f8fa;
+      border-left: 3px solid var(--color-primary);
+      padding: 8px 12px;
+      margin: 6px 0;
+      font-size: .85rem;
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      border-radius: 4px;
+    }
+    .rules-section .note {
+      background: #fffbe6;
+      border: 1px solid #f0d160;
+      border-radius: 4px;
+      padding: 8px 12px;
+      font-size: .85rem;
+      margin: 6px 0;
+      color: #5c4400;
+    }
+    .rules-section .example {
+      background: #eef4fb;
+      border-left: 3px solid var(--color-primary);
+      padding: 8px 12px;
+      margin: 6px 0;
+      font-size: .85rem;
+      border-radius: 4px;
+    }
+    .rules-toc {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      margin-bottom: 16px;
+    }
+    .rules-toc h4 { margin: 0 0 6px; font-size: .9rem; color: var(--color-text-muted); font-weight: 600; }
+    .rules-toc ol { margin: 0; padding-left: 20px; font-size: .85rem; }
+    .rules-toc a { text-decoration: none; }
+    .rules-toc a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <header class="app-header" id="app-header"></header>
+
+  <main class="app-main">
+    <h2 class="section-title">📖 集計ルール / 自動判定について</h2>
+
+    <p style="font-size:.85rem;color:var(--color-text-muted);margin:0 0 12px">
+      このサイトでは、各試合の打席記録から成績やスコアを自動集計しています。
+      判定ルールは以下のとおりです。
+    </p>
+
+    <nav class="rules-toc">
+      <h4>目次</h4>
+      <ol>
+        <li><a href="#sec-results">打席結果の種類</a></li>
+        <li><a href="#sec-batting">打撃成績の自動集計</a></li>
+        <li><a href="#sec-pitching">投手成績の自動集計</a></li>
+        <li><a href="#sec-decision">勝ち / 負け投手の自動判定</a></li>
+        <li><a href="#sec-score">イニングスコア・試合結果</a></li>
+        <li><a href="#sec-inning">イニングの自動進行</a></li>
+        <li><a href="#sec-mvp">MVP・その他</a></li>
+      </ol>
+    </nav>
+
+    <div class="rules-section" id="sec-results">
+      <h3>1. 打席結果の種類</h3>
+      <p>各打席で1つの結果を記録します。全12種類を3つのグループに整理しています。</p>
+
+      <h4>ヒット系</h4>
+      <ul>
+        <li><strong>ヒット</strong>: 単打</li>
+        <li><strong>二塁打</strong>: 2塁まで進塁</li>
+        <li><strong>三塁打</strong>: 3塁まで進塁</li>
+        <li><strong>本塁打</strong>: ホームラン</li>
+      </ul>
+
+      <h4>出塁系（アウトじゃないけどヒットでもない）</h4>
+      <ul>
+        <li><strong>四球</strong>: ボール4つでフォアボール（打数に含まない）</li>
+        <li><strong>死球</strong>: ボールがバッターに当たって出塁（打数に含まない）</li>
+        <li><strong>エラー</strong>: 失策で出塁</li>
+        <li><strong>他セーフ</strong>: その他の理由で出塁（フィルダースチョイスなど）</li>
+      </ul>
+
+      <h4>アウト系</h4>
+      <ul>
+        <li><strong>三振</strong>: ストライクアウト</li>
+        <li><strong>フライ</strong>: フライアウト</li>
+        <li><strong>ゴロ</strong>: ゴロアウト</li>
+        <li><strong>他アウト</strong>: その他のアウト（ライナーアウトなど）</li>
+      </ul>
+    </div>
+
+    <div class="rules-section" id="sec-batting">
+      <h3>2. 打撃成績の自動集計</h3>
+      <p>各メンバーの打席結果を試合をまたいで合計します。</p>
+
+      <div class="formula">
+        打席数 = 全結果（ヒット系 + 出塁系 + アウト系）の合計<br>
+        打数 = 打席数 - 四球 - 死球<br>
+        安打 = ヒット + 二塁打 + 三塁打 + 本塁打<br>
+        打率 = 安打 ÷ 打数（小数3位まで、打数0なら .---）<br>
+        打点 = 各打席で「打点」として入力した値の合計
+      </div>
+
+      <div class="note">
+        <strong>注意</strong>: エラー出塁・他セーフは打数に含まれますが、安打にはなりません（打率が下がります）。
+      </div>
+    </div>
+
+    <div class="rules-section" id="sec-pitching">
+      <h3>3. 投手成績の自動集計</h3>
+      <p>守備の打席記録（相手チームの打席）で「投手」を指定すると、その投手の成績が自動集計されます。</p>
+
+      <div class="formula">
+        登板試合数 = その投手が1打席以上投げた試合の数<br>
+        奪三振 = 結果が「三振」の打席数<br>
+        与四球 = 結果が「四球」の打席数<br>
+        与死球 = 結果が「死球」の打席数<br>
+        被安打 = 結果が「ヒット / 二塁打 / 三塁打 / 本塁打」の打席数<br>
+        失策出塁 = 結果が「エラー」の打席数<br>
+        失点 = 各打席で「失点」として入力した値の合計
+      </div>
+
+      <div class="note">
+        <strong>注意</strong>: 「他アウト」「他セーフ」は投手成績には特別なカウントを付けません（その他扱い）。
+      </div>
+    </div>
+
+    <div class="rules-section" id="sec-decision">
+      <h3>4. 勝ち / 負け投手の自動判定</h3>
+      <p>各試合ごとに、以下の優先順位で勝ち投手・負け投手を決めます。</p>
+
+      <h4>① 手動指定があればそれを優先</h4>
+      <p>
+        試合カードの「📊 手動成績」モーダルで、選手の <strong>勝 / 負</strong> ボタンを明示的に押した場合は、それが最優先で適用されます。
+        リリーフピッチャーに勝/負を付けたい場合などはここで上書きできます。
+      </p>
+
+      <h4>② 何も指定がなければ自動推定</h4>
+      <p>条件:</p>
+      <ul>
+        <li>守備の打席記録（相手の打席）が1つ以上ある</li>
+        <li>試合に勝敗がある（ourScore ≠ theirScore、同点なら判定なし）</li>
+      </ul>
+      <p>判定:</p>
+      <ul>
+        <li><strong>その試合で「最も多く相手打者と対戦した投手」 = 決定投手</strong></li>
+        <li>当チームが勝った場合（ourScore &gt; theirScore） → 決定投手に「勝」+1</li>
+        <li>当チームが負けた場合（ourScore &lt; theirScore） → 決定投手に「負」+1</li>
+      </ul>
+
+      <div class="example">
+        <strong>例</strong>: あさひが18打席、田中が3打席を投げた試合。<br>
+        スコアは 8-3 で勝利。<br>
+        → あさひが決定投手なので、<strong>あさひに「勝」+1</strong>
+      </div>
+
+      <div class="note">
+        <strong>注意</strong>: PTA草野球向けの簡易ルールです。プロ野球の正式な勝利投手ルール（5回以上投げた先発が条件など）とは異なります。
+        手動上書きで調整できます。
+      </div>
+    </div>
+
+    <div class="rules-section" id="sec-score">
+      <h3>5. イニングスコア・試合結果</h3>
+
+      <h4>各イニングの得点</h4>
+      <div class="formula">
+        当チームの○回得点 = その回に記録された当チームの全打席の「打点」合計<br>
+        相手チームの○回得点 = その回に記録された相手の全打席の「失点」合計
+      </div>
+
+      <h4>試合の合計スコア</h4>
+      <div class="formula">
+        ourScore = 当チームの全打席の打点合計<br>
+        theirScore = 全相手打席の失点合計
+      </div>
+
+      <h4>試合結果</h4>
+      <ul>
+        <li>ourScore &gt; theirScore: <strong>勝 (Win)</strong></li>
+        <li>ourScore &lt; theirScore: <strong>負 (Lose)</strong></li>
+        <li>ourScore == theirScore: <strong>分 (Draw)</strong></li>
+      </ul>
+
+      <div class="note">
+        盗塁や暴投で進塁した場合の得点は「打点」には反映されないため、自動計算とズレることがあります。
+        必要なら「打点」の値を手動で +1 して調整してください（緩和策）。
+      </div>
+    </div>
+
+    <div class="rules-section" id="sec-inning">
+      <h3>6. イニングの自動進行</h3>
+      <ul>
+        <li>「三振 / フライ / ゴロ / 他アウト」の合計が <strong>3に達するとアウトカウントが3/3になり、次の打席は自動で次の回</strong>に進みます</li>
+        <li>「前の回」「次の回」ボタンで手動移動も可能（手動指定中は黄色のラベル表示）</li>
+        <li>イニング数の上限はありません。<strong>時間制限の試合は「🏁 試合終了 / スコア確定」ボタン</strong>で終了させてください</li>
+      </ul>
+    </div>
+
+    <div class="rules-section" id="sec-mvp">
+      <h3>7. MVP・その他</h3>
+      <ul>
+        <li><strong>MVP</strong>: 試合の登録・編集モーダルで指定した選手のみ（手動指定）。自動判定はありません</li>
+        <li><strong>試合終了 / スコア確定</strong>: 時間制限などで終了した試合は、「🏁 試合終了 / スコア確定」ボタンで明示的に確定。試合カードに「🏁 確定」バッジが付きます</li>
+        <li><strong>順位（メンバー一覧）</strong>: メンバー画面の「並び替え」を成績系（打率・打席・本塁打など）にすると、メンバーカードに順位バッジが表示されます</li>
+      </ul>
+    </div>
+
+    <div style="margin:24px 0 0;padding:12px;background:#f6f8fa;border-radius:var(--radius);font-size:.8rem;color:var(--color-text-muted);text-align:center">
+      ルールの追加・変更を希望する場合は、代表者にご相談ください。
+    </div>
+  </main>
+
+  <nav class="app-nav" id="app-nav"></nav>
+
+  <script type="module">
+    import { renderHeader, renderNav } from './js/app.js';
+    renderHeader({ showLogout: false });
+    renderNav('home');
+  </script>
+</body>
+</html>
