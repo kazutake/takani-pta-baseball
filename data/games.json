@@ -54,7 +54,38 @@
         "m_motjxi3p1xyf",
         "m_motjwfehvqfi"
       ],
-      "ourPlays": []
+      "ourPlays": [
+        {
+          "inning": 1,
+          "batterId": "m_motjvwc1pwxc",
+          "result": "walk",
+          "rbi": 0
+        },
+        {
+          "inning": 1,
+          "batterId": "m_motjwpmx3hrh",
+          "result": "walk",
+          "rbi": 0
+        },
+        {
+          "inning": 1,
+          "batterId": "m_motjx3yyzlq5",
+          "result": "groundOut",
+          "rbi": 0
+        },
+        {
+          "inning": 1,
+          "batterId": "m_motjwag167wu",
+          "result": "flyOut",
+          "rbi": 0
+        },
+        {
+          "inning": 1,
+          "batterId": "m_motjw1nn8jkc",
+          "result": "groundOut",
+          "rbi": 0
+        }
+      ]
     }
   ]
 }
