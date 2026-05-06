@@ -274,6 +274,7 @@ function openDialog(g, isEdit) {
   const existingPhotos = [...(g.photos || [])];
   const removedPhotos = [];
   const newPhotos = [];
+  let finalized = !!g.finalized;
 
   // 先攻/後攻フラグは打席記録モーダルの[打順]タブで設定する
 
@@ -319,6 +320,16 @@ function openDialog(g, isEdit) {
             </p>
           </div>
 
+          ${isEdit ? `
+            <div class="field">
+              <label class="field-label">試合終了 / スコア確定</label>
+              <div id="finalize-bar"></div>
+              <p style="font-size:.75rem;color:var(--color-text-muted);margin:6px 0 0">
+                ※ 確定するとカードに「🏁 確定」バッジが付きます。後から解除も可能です。実際に保存されるのは「更新」を押したときです。
+              </p>
+            </div>
+          ` : ''}
+
           <div id="upload-progress" style="display:none;margin:12px 0;font-size:.85rem;color:var(--color-text-muted);text-align:center"></div>
 
           <div class="modal-actions">
@@ -339,6 +350,33 @@ function openDialog(g, isEdit) {
   const existingEl = document.getElementById('existing-photos');
   const newEl = document.getElementById('new-photos');
   const progressEl = document.getElementById('upload-progress');
+
+  // 試合終了 / スコア確定トグル（編集時のみ）
+  function renderFinalizeBar() {
+    const bar = document.getElementById('finalize-bar');
+    if (!bar) return;
+    bar.innerHTML = finalized
+      ? `<button type="button" class="btn btn-block" id="unfinalize-btn" style="background:#fffbe6;border-color:#f0d160;color:#5c4400;font-weight:600">
+           ✓ スコア確定済み — タップで再編集（確定解除）
+         </button>`
+      : `<button type="button" class="btn btn-block btn-accent" id="finalize-btn" style="font-weight:700;font-size:1rem;padding:14px;color:#fff">
+           🏁 試合終了 / スコア確定
+         </button>`;
+    if (finalized) {
+      document.getElementById('unfinalize-btn').addEventListener('click', () => {
+        if (!confirm('確定を解除して再編集モードに戻しますか？\n（「更新」ボタンで保存されます）')) return;
+        finalized = false;
+        renderFinalizeBar();
+      });
+    } else {
+      document.getElementById('finalize-btn').addEventListener('click', () => {
+        if (!confirm('試合を終了してスコアを確定しますか？\n（「更新」ボタンで保存されます。後で解除も可能です）')) return;
+        finalized = true;
+        renderFinalizeBar();
+      });
+    }
+  }
+  renderFinalizeBar();
 
   function renderExisting() {
     existingEl.innerHTML = existingPhotos
@@ -434,7 +472,7 @@ function openDialog(g, isEdit) {
         ...existingPhotos.filter((p) => !removedPhotos.includes(p)),
         ...uploadedPaths,
       ];
-      // 既存のフィールド (oppPlays, finalized, ourPlays, ourLineup, isHome, innings,
+      // 既存のフィールド (oppPlays, ourPlays, ourLineup, isHome, innings,
       // playerStats など) を漏れなく保持するため、まず g を展開してからフォーム入力値で上書きする
       const newGame = {
         ...g,
@@ -445,6 +483,7 @@ function openDialog(g, isEdit) {
         mvpId: fd.get('mvpId').toString() || null,
         highlights: fd.get('highlights').toString().trim(),
         photos: finalPhotos,
+        finalized,
       };
 
       const next = { ...gamesState };
@@ -609,8 +648,6 @@ function openPlaysDialog(gameId) {
   let pendingDefRBI = 0;
   let manualDefInning = null;
   let defenseEntryCollapsed = false;
-  let finalized = !!game.finalized;
-
   const memberById = (id) => membersState.members.find((m) => m.id === id);
 
   // 「投手」ポジションの選手を守備投手として自動判定
@@ -655,7 +692,7 @@ function openPlaysDialog(gameId) {
   const html = `
     <div class="modal-backdrop open" id="plays-modal">
       <div class="modal plays-modal">
-        <h3 style="margin:0 0 4px">📝 打席記録 ${finalized ? '<span class="badge badge-win" style="margin-left:4px">🏁 確定済</span>' : ''}</h3>
+        <h3 style="margin:0 0 4px">📝 打席記録 ${game.finalized ? '<span class="badge badge-win" style="margin-left:4px">🏁 確定済</span>' : ''}</h3>
         <div class="card-meta" style="margin-bottom:8px">
           ${escapeHtml(formatDate(game.date))} vs ${escapeHtml(game.opponent || '')}
         </div>
@@ -667,7 +704,6 @@ function openPlaysDialog(gameId) {
         <div class="play-tab-content" id="tab-lineup"></div>
         <div class="play-tab-content" id="tab-offense"></div>
         <div class="play-tab-content" id="tab-defense"></div>
-        <div class="finalize-bar" id="finalize-bar"></div>
         <div class="modal-actions" style="margin-top:8px">
           <button type="button" class="btn" id="plays-cancel">キャンセル</button>
           <button type="button" class="btn btn-primary" id="plays-save">保存</button>
@@ -728,7 +764,15 @@ function openPlaysDialog(gameId) {
       }).join('');
 
     const usedIds = new Set(lineup.map((e) => e.memberId));
-    const available = membersState.members.filter((m) => !usedIds.has(m.id));
+    let available = membersState.members.filter((m) => !usedIds.has(m.id));
+    // リンク予定がある場合は ○ (出席) のメンバーだけに絞る
+    let availabilityFiltered = false;
+    if (game.eventId) {
+      const att = attendanceState.attendance[game.eventId] || {};
+      const yesIds = new Set(Object.keys(att).filter((mid) => att[mid] === 'yes'));
+      available = available.filter((m) => yesIds.has(m.id));
+      availabilityFiltered = true;
+    }
     const sortedAvail = [...available].sort((a, b) => {
       const na = a.number ?? 999, nb = b.number ?? 999;
       if (na !== nb) return na - nb;
@@ -769,7 +813,9 @@ function openPlaysDialog(gameId) {
       <div class="lineup-list">${lineupHtml}</div>
       ${sortedAvail.length > 0 ? `
         <div style="margin-top:12px">
-          <h5 style="margin:0 0 6px;font-size:.85rem;color:var(--color-text-muted)">追加できるメンバー</h5>
+          <h5 style="margin:0 0 6px;font-size:.85rem;color:var(--color-text-muted)">
+            追加できるメンバー${availabilityFiltered ? '（○ 出席のみ）' : ''}
+          </h5>
           <div class="member-pool">
             ${sortedAvail.map((m) => `
               <button type="button" class="member-pool-btn" data-add-member="${m.id}">
@@ -778,7 +824,7 @@ function openPlaysDialog(gameId) {
             `).join('')}
           </div>
         </div>
-      ` : '<p style="font-size:.8rem;color:var(--color-text-muted);margin-top:8px">全員を打順に入れました。</p>'}
+      ` : `<p style="font-size:.8rem;color:var(--color-text-muted);margin-top:8px">${availabilityFiltered ? '○ で出席登録されたメンバーは全員打順に入っています。<br>追加で誰かを入れたい場合は、出欠ページで該当メンバーを ○ に登録してください。' : '全員を打順に入れました。'}</p>`}
     `;
 
     const tabEl = document.getElementById('tab-lineup');
@@ -1401,40 +1447,10 @@ function openPlaysDialog(gameId) {
     });
   }
 
-  // ----- 試合終了 / 確定解除バー -----
-  function renderFinalizeBar() {
-    const bar = document.getElementById('finalize-bar');
-    bar.innerHTML = finalized
-      ? `
-        <button type="button" class="btn btn-block" id="unfinalize-btn" style="background:#fffbe6;border-color:#f0d160;color:#5c4400;font-weight:600">
-          ✓ スコア確定済み — タップで再編集（確定解除）
-        </button>`
-      : `
-        <button type="button" class="btn btn-block btn-accent" id="finalize-btn" style="font-weight:700;font-size:1rem;padding:14px;color:#fff">
-          🏁 試合終了 / スコア確定
-        </button>`;
-    if (finalized) {
-      document.getElementById('unfinalize-btn').addEventListener('click', () => {
-        if (!confirm('確定を解除して再編集モードに戻しますか？')) return;
-        finalized = false;
-        renderFinalizeBar();
-        savePlays({ closeAfter: false, message: '確定解除' });
-      });
-    } else {
-      document.getElementById('finalize-btn').addEventListener('click', () => {
-        if (!confirm('試合を終了してスコアを確定しますか？\n（後で再編集も可能です）')) return;
-        finalized = true;
-        renderFinalizeBar();
-        savePlays({ closeAfter: true, message: '🏁 試合終了 - スコア確定' });
-      });
-    }
-  }
-
   setTab(activeTab);
   renderLineupTab();
   renderOffenseTab();
   renderDefenseTab();
-  renderFinalizeBar();
 
   async function savePlays({ closeAfter = true, message = '保存しました' } = {}) {
     const saveBtn = document.getElementById('plays-save');
@@ -1443,13 +1459,13 @@ function openPlaysDialog(gameId) {
       saveBtn.textContent = '保存中...';
     }
     try {
+      // game.finalized は ...game の展開でそのまま保持される（試合の編集ダイアログで管理）
       let updatedGame = {
         ...game,
         ourLineup: lineup,
         ourPlays: plays,
         oppPlays: oppPlays,
         isHome,
-        finalized,
       };
       if (plays.length > 0 || oppPlays.length > 0) {
         const ourTotal = plays.reduce((s, p) => s + (p.rbi || 0), 0);
@@ -1468,7 +1484,7 @@ function openPlaysDialog(gameId) {
         CONFIG.DATA_PATHS.games,
         next,
         gamesSha,
-        `update plays for game ${game.date} vs ${game.opponent}${finalized ? ' (finalized)' : ''}`,
+        `update plays for game ${game.date} vs ${game.opponent}`,
       );
       gamesState = next;
       // game オブジェクトを更新（再編集時に整合性保つため）
