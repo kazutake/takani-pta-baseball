@@ -1,3 +1,20 @@
 {
-  "members": []
+  "members": [
+    {
+      "id": "m_moth46wbgufq",
+      "name": "あさひ",
+      "number": 19,
+      "position": "投手",
+      "joinedDate": "2026-05-06",
+      "stats": {
+        "atBats": 0,
+        "hits": 0,
+        "homeRuns": 0,
+        "rbis": 0,
+        "wins": 0,
+        "losses": 0
+      },
+      "notes": ""
+    }
+  ]
 }
