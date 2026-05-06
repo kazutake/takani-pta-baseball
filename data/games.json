@@ -51,8 +51,16 @@
           "position": "二塁手"
         }
       ],
-      "ourPlays": [],
-      "oppPlays": []
+      "ourPlays": [
+        {
+          "inning": 1,
+          "batterId": "m_moth46wbgufq",
+          "result": "groundOut",
+          "rbi": 0
+        }
+      ],
+      "oppPlays": [],
+      "result": "draw"
     }
   ]
 }
