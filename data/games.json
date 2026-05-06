@@ -12,7 +12,47 @@
       "mvpId": null,
       "highlights": "",
       "photos": [],
-      "eventId": "e_motovi61ld52"
+      "eventId": "e_motovi61ld52",
+      "ourLineup": [
+        {
+          "memberId": "m_moth46wbgufq",
+          "position": "中堅手"
+        },
+        {
+          "memberId": "m_motkvdpsv10y",
+          "position": "左翼手"
+        },
+        {
+          "memberId": "m_motkv9ascdpx",
+          "position": "捕手"
+        },
+        {
+          "memberId": "m_motkv4fnrkmz",
+          "position": "右翼手"
+        },
+        {
+          "memberId": "m_motkvjfh8tbi",
+          "position": "投手"
+        },
+        {
+          "memberId": "m_motkyugdfake",
+          "position": "一塁手"
+        },
+        {
+          "memberId": "m_motkxo2u89qy",
+          "position": "三塁手"
+        },
+        {
+          "memberId": "m_motkwoito899",
+          "position": "遊撃手"
+        },
+        {
+          "memberId": "m_motkwzcfqnxm",
+          "position": "二塁手"
+        }
+      ],
+      "ourPlays": [],
+      "oppPlays": []
     }
   ]
 }
