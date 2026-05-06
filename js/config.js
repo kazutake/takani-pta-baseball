@@ -2,8 +2,8 @@ export const CONFIG = {
   TEAM_NAME: '高井戸第二小学校PTA野球部',
   CONTACT_EMAIL: 'kazutake.asahi@gmail.com',
 
-  GITHUB_OWNER: 'kazutake',
-  GITHUB_REPO: 'takani-pta-baseball',
+  GITHUB_OWNER: 'takani-pta-baseball-team',
+  GITHUB_REPO: 'ourpage',
   BRANCH: 'main',
 
   ENCRYPTED_PAT_PATH: 'encrypted-pat.json',
