@@ -1112,8 +1112,9 @@ function openPlaysDialog(gameId) {
     });
     document.getElementById('confirm-pa').addEventListener('click', () => {
       if (!pendingResult) return;
+      const inningRecorded = currentInning();
       plays.push({
-        inning: currentInning(),
+        inning: inningRecorded,
         batterId,
         result: pendingResult,
         rbi: pendingRBI,
@@ -1121,7 +1122,17 @@ function openPlaysDialog(gameId) {
       pendingResult = null;
       pendingRBI = 0;
       manualInning = null;
-      renderOffenseTab();
+      // 3アウトで自動的に守備タブへ切替（最新イニングのみ）
+      const outsAfterPA = outsInInning(plays, inningRecorded);
+      const maxInning = plays.length > 0 ? Math.max(...plays.map((p) => p.inning)) : 1;
+      if (outsAfterPA === 3 && inningRecorded === maxInning) {
+        defenseEntryCollapsed = false;
+        setTab('defense');
+        renderDefenseTab();
+        showToast(`${inningRecorded}回 3アウト → 守備に切替`, 'success');
+      } else {
+        renderOffenseTab();
+      }
     });
     document.getElementById('prev-inning').addEventListener('click', () => {
       const cur = currentInning();
@@ -1322,8 +1333,9 @@ function openPlaysDialog(gameId) {
     });
     document.getElementById('confirm-def-pa').addEventListener('click', () => {
       if (!pendingDefResult) return;
+      const inningRecorded = currentDefInning();
       oppPlays.push({
-        inning: currentDefInning(),
+        inning: inningRecorded,
         result: pendingDefResult,
         rbi: pendingDefRBI,
         pitcherId: currentPitcherId || null,
@@ -1331,7 +1343,17 @@ function openPlaysDialog(gameId) {
       pendingDefResult = null;
       pendingDefRBI = 0;
       manualDefInning = null;
-      renderDefenseTab();
+      // 3アウトで自動的に攻撃タブへ切替（最新イニングのみ）
+      const outsAfterPA = outsInInning(oppPlays, inningRecorded);
+      const maxInning = oppPlays.length > 0 ? Math.max(...oppPlays.map((p) => p.inning)) : 1;
+      if (outsAfterPA === 3 && inningRecorded === maxInning) {
+        offenseEntryCollapsed = false;
+        setTab('offense');
+        renderOffenseTab();
+        showToast(`${inningRecorded}回 3アウト → 攻撃に切替`, 'success');
+      } else {
+        renderDefenseTab();
+      }
     });
     document.getElementById('def-prev-inning').addEventListener('click', () => {
       const cur = currentDefInning();
