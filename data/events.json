@@ -9,6 +9,16 @@
       "location": "石神井公園A",
       "description": "高二出発１１時４５分",
       "gameId": "g_motowgfpbpio"
+    },
+    {
+      "id": "e_motpc2e2yheh",
+      "date": "2026-05-17",
+      "startTime": "07:00",
+      "endTime": "09:00",
+      "type": "練習",
+      "location": "高井戸第二小学校 校庭",
+      "description": "",
+      "gameId": null
     }
   ]
 }
