@@ -37,11 +37,11 @@
         </ul>
       </div>
 
-      <a class="btn btn-primary btn-block" id="contact-btn" href="#">
-        ✉️ 入部について問い合わせる
+      <a class="btn btn-primary btn-block" id="contact-btn" href="https://forms.gle/FPEGyrrjvwNx9zow6" target="_blank" rel="noopener">
+        📝 入部について問い合わせる
       </a>
       <p style="font-size:.8rem;color:var(--color-text-muted);margin:8px 0 0;text-align:center">
-        タップするとメールアプリが開きます
+        タップするとお問い合わせフォームが開きます
       </p>
     </div>
 
@@ -76,18 +76,6 @@
 
     renderHeader({ showLogout: false });
     renderNav('home');
-
-    const subject = encodeURIComponent('【入部問い合わせ】高井戸第二小学校PTA野球部');
-    const body = encodeURIComponent(
-      'お問い合わせありがとうございます。以下にご記入ください。\n\n' +
-      '・お名前: \n' +
-      '・お子様の学年（在籍/卒業）: \n' +
-      '・連絡可能な電話番号: \n' +
-      '・野球経験: \n' +
-      '・ひとこと: \n'
-    );
-    document.getElementById('contact-btn').href =
-      `mailto:${CONFIG.CONTACT_EMAIL}?subject=${subject}&body=${body}`;
 
     document.getElementById('member-login-btn').addEventListener('click', () => {
       showLoginModal({
