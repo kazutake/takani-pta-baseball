@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PAT暗号化ツール | PTA野球部</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    body { background: var(--color-bg); }
+    .tool-main { max-width: 600px; margin: 0 auto; padding: 24px 16px; }
+    .tool-main h1 { font-size: 1.3rem; margin: 0 0 16px; color: var(--color-primary); }
+    .note {
+      background: #fffbe6;
+      border: 1px solid #f0d160;
+      border-radius: var(--radius);
+      padding: 12px;
+      font-size: .85rem;
+      margin-bottom: 16px;
+    }
+    .output {
+      background: #1f2328;
+      color: #e6edf3;
+      padding: 12px;
+      border-radius: var(--radius);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .85rem;
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin-top: 12px;
+      max-height: 240px;
+      overflow: auto;
+    }
+    .step { margin: 24px 0; padding-top: 16px; border-top: 1px solid var(--color-border); }
+    .step:first-of-type { border-top: none; padding-top: 0; }
+    .step h2 { font-size: 1rem; margin: 0 0 12px; color: var(--color-primary); }
+  </style>
+</head>
+<body>
+  <main class="tool-main">
+    <h1>🔐 PAT 暗号化ツール</h1>
+
+    <div class="note">
+      <strong>このツールはローカルで動作します。</strong><br>
+      入力した PAT・パスワードはネットワークに送信されません。ブラウザ内で AES-GCM 暗号化のみ行います。
+      作業後はこのページのタブを閉じてください。
+    </div>
+
+    <div class="step">
+      <h2>1. 暗号化する</h2>
+      <div class="card">
+        <form id="encrypt-form">
+          <div class="field">
+            <label class="field-label" for="pat">GitHub Personal Access Token (PAT)</label>
+            <input id="pat" class="field-input" type="password" autocomplete="off" placeholder="github_pat_xxx..." required />
+          </div>
+          <div class="field">
+            <label class="field-label" for="password">チーム共通パスワード</label>
+            <input id="password" class="field-input" type="password" autocomplete="new-password" required />
+          </div>
+          <div class="field">
+            <label class="field-label" for="password2">パスワード（確認）</label>
+            <input id="password2" class="field-input" type="password" autocomplete="new-password" required />
+          </div>
+          <button class="btn btn-primary btn-block" type="submit">暗号化する</button>
+        </form>
+        <div id="enc-error" style="color:var(--color-danger);font-size:.85rem;margin-top:8px;display:none"></div>
+      </div>
+    </div>
+
+    <div class="step" id="output-step" style="display:none">
+      <h2>2. 結果を保存する</h2>
+      <p style="font-size:.9rem">下記の JSON をコピーして、リポジトリ直下に <code>encrypted-pat.json</code> という名前で保存してください。</p>
+      <div class="output" id="output"></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-block" id="copy-btn">📋 コピー</button>
+        <button class="btn btn-block" id="download-btn">💾 ダウンロード</button>
+      </div>
+    </div>
+
+    <div class="step">
+      <h2>復号テスト</h2>
+      <p style="font-size:.9rem">作成した JSON が正しいパスワードで復号できるか確認できます。</p>
+      <div class="card">
+        <form id="decrypt-form">
+          <div class="field">
+            <label class="field-label" for="dec-json">暗号化 JSON</label>
+            <textarea id="dec-json" class="field-textarea" required placeholder='{"version":1,...}'></textarea>
+          </div>
+          <div class="field">
+            <label class="field-label" for="dec-password">パスワード</label>
+            <input id="dec-password" class="field-input" type="password" autocomplete="off" required />
+          </div>
+          <button class="btn btn-block" type="submit">復号する</button>
+        </form>
+        <div id="dec-result" style="margin-top:8px;font-family:monospace;font-size:.85rem"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:24px;text-align:center">
+      <a href="../index.html" class="btn btn-sm">← サイトトップに戻る</a>
+    </div>
+  </main>
+
+  <script type="module">
+    import { encryptPAT, decryptPAT } from '../js/crypto.js';
+
+    let lastJson = null;
+
+    document.getElementById('encrypt-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const errEl = document.getElementById('enc-error');
+      errEl.style.display = 'none';
+      const pat = document.getElementById('pat').value.trim();
+      const pw1 = document.getElementById('password').value;
+      const pw2 = document.getElementById('password2').value;
+      if (pw1 !== pw2) {
+        errEl.textContent = 'パスワードが一致しません';
+        errEl.style.display = 'block';
+        return;
+      }
+      if (pw1.length < 6) {
+        errEl.textContent = 'パスワードは6文字以上にしてください';
+        errEl.style.display = 'block';
+        return;
+      }
+      try {
+        const result = await encryptPAT(pat, pw1);
+        lastJson = JSON.stringify(result, null, 2);
+        document.getElementById('output').textContent = lastJson;
+        document.getElementById('output-step').style.display = 'block';
+        document.getElementById('output-step').scrollIntoView({ behavior: 'smooth' });
+      } catch (err) {
+        errEl.textContent = '暗号化エラー: ' + err.message;
+        errEl.style.display = 'block';
+      }
+    });
+
+    document.getElementById('copy-btn').addEventListener('click', async () => {
+      if (!lastJson) return;
+      try {
+        await navigator.clipboard.writeText(lastJson);
+        const btn = document.getElementById('copy-btn');
+        const t = btn.textContent;
+        btn.textContent = '✓ コピーしました';
+        setTimeout(() => (btn.textContent = t), 1500);
+      } catch (e) {
+        alert('コピーに失敗しました。手動でコピーしてください。');
+      }
+    });
+
+    document.getElementById('download-btn').addEventListener('click', () => {
+      if (!lastJson) return;
+      const blob = new Blob([lastJson], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'encrypted-pat.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('decrypt-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const result = document.getElementById('dec-result');
+      result.style.color = 'inherit';
+      result.textContent = '復号中...';
+      try {
+        const json = JSON.parse(document.getElementById('dec-json').value);
+        const pw = document.getElementById('dec-password').value;
+        const pat = await decryptPAT(json, pw);
+        result.style.color = 'var(--color-success)';
+        result.textContent = '✓ 成功: ' + pat.slice(0, 12) + '...（先頭のみ表示）';
+      } catch (err) {
+        result.style.color = 'var(--color-danger)';
+        result.textContent = '✗ 失敗: ' + err.message;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1f4e8c" />
+  <title>高井戸第二小学校PTA野球部</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="app-header" id="app-header"></header>
+
+  <main class="app-main">
+    <div class="hero">
+      <h2>⚾ 高井戸第二小学校PTA野球部</h2>
+      <p>大人になっても、もう一度白球を追いかけよう</p>
+    </div>
+
+    <div class="card">
+      <h3 class="card-title">新メンバー募集中！</h3>
+      <p style="margin:0 0 8px">
+        高井戸第二小学校PTA野球部では、一緒に汗を流す仲間を募集しています。
+      </p>
+      <ul style="margin:0 0 12px;padding-left:20px;font-size:.95rem">
+        <li>未経験者・初心者大歓迎</li>
+        <li>練習: 不定期（土日メイン）</li>
+        <li>場所: 高井戸第二小学校 校庭</li>
+        <li>道具一式は最初のうち貸出OK</li>
+      </ul>
+      <a class="btn btn-primary btn-block" id="contact-btn" href="#">
+        ✉️ 入部について問い合わせる
+      </a>
+      <p style="font-size:.8rem;color:var(--color-text-muted);margin:8px 0 0;text-align:center">
+        メールアプリが開きます
+      </p>
+    </div>
+
+    <div class="card">
+      <h3 class="card-title">メンバーの方へ</h3>
+      <p style="margin:0 0 12px;font-size:.9rem">
+        試合スコア・出欠・個人記録の登録はこちらから。
+      </p>
+      <button class="btn btn-block" id="member-login-btn">
+        🔒 メンバーログイン
+      </button>
+    </div>
+  </main>
+
+  <nav class="app-nav" id="app-nav"></nav>
+
+  <script type="module">
+    import { CONFIG } from './js/config.js';
+    import { renderHeader, renderNav } from './js/app.js';
+    import { showLoginModal } from './js/auth.js';
+
+    renderHeader({ showLogout: false });
+    renderNav('home');
+
+    const subject = encodeURIComponent('【入部問い合わせ】高井戸第二小学校PTA野球部');
+    const body = encodeURIComponent(
+      'お問い合わせありがとうございます。以下にご記入ください。\n\n' +
+      '・お名前: \n' +
+      '・お子様の学年（在籍/卒業）: \n' +
+      '・連絡可能な電話番号: \n' +
+      '・野球経験: \n' +
+      '・ひとこと: \n'
+    );
+    document.getElementById('contact-btn').href =
+      `mailto:${CONFIG.CONTACT_EMAIL}?subject=${subject}&body=${body}`;
+
+    document.getElementById('member-login-btn').addEventListener('click', () => {
+      showLoginModal({
+        onSuccess: () => { location.href = 'games.html'; }
+      });
+    });
+  </script>
+</body>
+</html>
