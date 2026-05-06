@@ -55,6 +55,55 @@ export async function writeJSON(path, data, sha, message) {
   return json.content.sha;
 }
 
+export async function writeBinary(path, base64Content, message) {
+  const url = `${API_BASE}/repos/${CONFIG.GITHUB_OWNER}/${CONFIG.GITHUB_REPO}/contents/${path}`;
+  const body = {
+    message: message || `add ${path}`,
+    content: base64Content,
+    branch: CONFIG.BRANCH,
+  };
+  const res = await fetch(url, {
+    method: 'PUT',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`PUT ${path} failed: ${res.status} ${text}`);
+  }
+  const json = await res.json();
+  return { sha: json.content.sha, downloadUrl: json.content.download_url, path: json.content.path };
+}
+
+export async function fetchFileSha(path) {
+  const url = `${API_BASE}/repos/${CONFIG.GITHUB_OWNER}/${CONFIG.GITHUB_REPO}/contents/${path}?ref=${CONFIG.BRANCH}`;
+  const res = await fetch(url, { headers: authHeaders(), cache: 'no-store' });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`HEAD ${path} failed: ${res.status}`);
+  const json = await res.json();
+  return json.sha;
+}
+
+export async function deleteFile(path, sha, message) {
+  const fileSha = sha || (await fetchFileSha(path));
+  if (!fileSha) return;
+  const url = `${API_BASE}/repos/${CONFIG.GITHUB_OWNER}/${CONFIG.GITHUB_REPO}/contents/${path}`;
+  const body = {
+    message: message || `delete ${path}`,
+    sha: fileSha,
+    branch: CONFIG.BRANCH,
+  };
+  const res = await fetch(url, {
+    method: 'DELETE',
+    headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok && res.status !== 404) {
+    const text = await res.text();
+    throw new Error(`DELETE ${path} failed: ${res.status} ${text}`);
+  }
+}
+
 export async function fetchEncryptedPAT() {
   const url = `${API_BASE}/repos/${CONFIG.GITHUB_OWNER}/${CONFIG.GITHUB_REPO}/contents/${CONFIG.ENCRYPTED_PAT_PATH}?ref=${CONFIG.BRANCH}`;
   const res = await fetch(url, {

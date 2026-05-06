@@ -1,6 +1,7 @@
 import { CONFIG } from '../config.js';
-import { fetchJSON, writeJSON, ConflictError } from '../api.js';
+import { fetchJSON, writeJSON, writeBinary, deleteFile, ConflictError } from '../api.js';
 import { renderHeader, renderNav, requireAuth, showToast, escapeHtml, formatDate, uid, todayISO } from '../app.js';
+import { processImage, blobToBase64 } from '../imageutil.js';
 
 renderHeader();
 renderNav('games');
@@ -40,6 +41,14 @@ function render() {
   list.querySelectorAll('[data-delete]').forEach((btn) => {
     btn.addEventListener('click', () => deleteGame(btn.dataset.delete));
   });
+  list.querySelectorAll('[data-photo]').forEach((el) => {
+    el.addEventListener('click', () => {
+      const gameId = el.dataset.gameId;
+      const idx = Number(el.dataset.photoIndex);
+      const game = gamesState.games.find((x) => x.id === gameId);
+      if (game) openLightbox(game.photos || [], idx, game);
+    });
+  });
 }
 
 function renderGameCard(g) {
@@ -53,6 +62,7 @@ function renderGameCard(g) {
   const mvpName = g.mvpId
     ? membersState.members.find((m) => m.id === g.mvpId)?.name
     : null;
+  const photos = g.photos || [];
   return `
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
@@ -72,6 +82,15 @@ function renderGameCard(g) {
       ${g.location ? `<div class="card-meta">📍 ${escapeHtml(g.location)}</div>` : ''}
       ${mvpName ? `<div class="card-meta">🏆 MVP: ${escapeHtml(mvpName)}</div>` : ''}
       ${g.highlights ? `<p style="margin:8px 0 0;font-size:.9rem;white-space:pre-wrap">${escapeHtml(g.highlights)}</p>` : ''}
+      ${photos.length > 0 ? `
+        <div class="photo-grid">
+          ${photos.map((p, i) => `
+            <div class="photo-thumb" data-photo data-game-id="${g.id}" data-photo-index="${i}">
+              <img src="${escapeHtml(p)}" alt="" loading="lazy" />
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
     </div>
   `;
 }
@@ -86,19 +105,25 @@ function openAddDialog() {
     location: '',
     mvpId: '',
     highlights: '',
+    photos: [],
   }, false);
 }
 
 function openEditDialog(id) {
   const g = gamesState.games.find((x) => x.id === id);
   if (!g) return;
-  openDialog({ ...g }, true);
+  openDialog({ ...g, photos: [...(g.photos || [])] }, true);
 }
 
 function openDialog(g, isEdit) {
   const memberOptions = membersState.members
     .map((m) => `<option value="${m.id}" ${m.id === g.mvpId ? 'selected' : ''}>${escapeHtml(m.name)}</option>`)
     .join('');
+
+  const existingPhotos = [...(g.photos || [])];
+  const removedPhotos = [];
+  const newPhotos = [];
+
   const html = `
     <div class="modal-backdrop open" id="game-modal" role="dialog" aria-modal="true">
       <div class="modal">
@@ -137,6 +162,22 @@ function openDialog(g, isEdit) {
             <label class="field-label">ハイライト・コメント</label>
             <textarea class="field-textarea" name="highlights" placeholder="活躍した選手や試合のポイント">${escapeHtml(g.highlights)}</textarea>
           </div>
+
+          <div class="field">
+            <label class="field-label">写真</label>
+            <div id="photo-area">
+              <div id="existing-photos" class="photo-grid-edit"></div>
+              <div id="new-photos" class="photo-grid-edit"></div>
+            </div>
+            <input type="file" id="photo-input" accept="image/*" multiple style="display:none" />
+            <button type="button" class="btn btn-block btn-sm" id="photo-add-btn" style="margin-top:8px">📷 写真を追加</button>
+            <p style="font-size:.75rem;color:var(--color-text-muted);margin:6px 0 0">
+              ※ 自動で1280pxにリサイズされます。位置情報(GPS)も削除されます。
+            </p>
+          </div>
+
+          <div id="upload-progress" style="display:none;margin:12px 0;font-size:.85rem;color:var(--color-text-muted);text-align:center"></div>
+
           <div class="modal-actions">
             <button type="button" class="btn" id="game-cancel">キャンセル</button>
             <button type="submit" class="btn btn-primary" id="game-submit">${isEdit ? '更新' : '登録'}</button>
@@ -150,28 +191,118 @@ function openDialog(g, isEdit) {
   const modal = document.getElementById('game-modal');
   const form = document.getElementById('game-form');
   const submitBtn = document.getElementById('game-submit');
-  document.getElementById('game-cancel').addEventListener('click', () => modal.remove());
+  const photoInput = document.getElementById('photo-input');
+  const photoAddBtn = document.getElementById('photo-add-btn');
+  const existingEl = document.getElementById('existing-photos');
+  const newEl = document.getElementById('new-photos');
+  const progressEl = document.getElementById('upload-progress');
+
+  function renderExisting() {
+    existingEl.innerHTML = existingPhotos
+      .filter((p) => !removedPhotos.includes(p))
+      .map((p) => `
+        <div class="photo-edit-thumb">
+          <img src="${escapeHtml(p)}" alt="" loading="lazy" />
+          <button type="button" class="photo-remove-btn" data-remove-existing="${escapeHtml(p)}" title="削除">×</button>
+        </div>
+      `).join('');
+    existingEl.querySelectorAll('[data-remove-existing]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        removedPhotos.push(btn.dataset.removeExisting);
+        renderExisting();
+      });
+    });
+  }
+
+  function renderNew() {
+    newEl.innerHTML = newPhotos.map((entry, i) => `
+      <div class="photo-edit-thumb">
+        <img src="${entry.previewUrl}" alt="" />
+        <button type="button" class="photo-remove-btn" data-remove-new="${i}" title="削除">×</button>
+      </div>
+    `).join('');
+    newEl.querySelectorAll('[data-remove-new]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const i = Number(btn.dataset.removeNew);
+        URL.revokeObjectURL(newPhotos[i].previewUrl);
+        newPhotos.splice(i, 1);
+        renderNew();
+      });
+    });
+  }
+
+  renderExisting();
+  renderNew();
+
+  photoAddBtn.addEventListener('click', () => photoInput.click());
+  photoInput.addEventListener('change', () => {
+    for (const file of photoInput.files) {
+      newPhotos.push({ file, previewUrl: URL.createObjectURL(file) });
+    }
+    photoInput.value = '';
+    renderNew();
+  });
+
+  document.getElementById('game-cancel').addEventListener('click', () => {
+    newPhotos.forEach((n) => URL.revokeObjectURL(n.previewUrl));
+    modal.remove();
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(form);
     const ourScore = Number(fd.get('ourScore'));
     const theirScore = Number(fd.get('theirScore'));
-    const newGame = {
-      id: g.id || uid('g'),
-      date: fd.get('date'),
-      opponent: fd.get('opponent').toString().trim(),
-      ourScore,
-      theirScore,
-      result: ourScore > theirScore ? 'win' : ourScore < theirScore ? 'lose' : 'draw',
-      location: fd.get('location').toString().trim(),
-      mvpId: fd.get('mvpId').toString() || null,
-      highlights: fd.get('highlights').toString().trim(),
-    };
+    const gameId = g.id || uid('g');
 
     submitBtn.disabled = true;
-    submitBtn.textContent = '保存中...';
+    photoAddBtn.disabled = true;
+
+    const uploadedPaths = [];
     try {
+      // 1. アップロード新規写真
+      for (let i = 0; i < newPhotos.length; i++) {
+        progressEl.style.display = 'block';
+        progressEl.textContent = `写真をアップロード中... ${i + 1}/${newPhotos.length}`;
+        const blob = await processImage(newPhotos[i].file);
+        const base64 = await blobToBase64(blob);
+        const ts = Date.now() + i;
+        const path = `images/games/${gameId}/${ts}.jpg`;
+        await writeBinary(path, base64, `add photo for game ${gameId}`);
+        uploadedPaths.push(path);
+      }
+
+      // 2. 削除する既存写真をAPIで削除
+      for (let i = 0; i < removedPhotos.length; i++) {
+        progressEl.style.display = 'block';
+        progressEl.textContent = `写真を削除中... ${i + 1}/${removedPhotos.length}`;
+        try {
+          await deleteFile(removedPhotos[i], null, `remove photo from game ${gameId}`);
+        } catch (err) {
+          console.warn('photo delete failed', err);
+        }
+      }
+
+      // 3. games.json 更新
+      progressEl.textContent = '保存中...';
+      submitBtn.textContent = '保存中...';
+      const finalPhotos = [
+        ...existingPhotos.filter((p) => !removedPhotos.includes(p)),
+        ...uploadedPaths,
+      ];
+      const newGame = {
+        id: gameId,
+        date: fd.get('date'),
+        opponent: fd.get('opponent').toString().trim(),
+        ourScore,
+        theirScore,
+        result: ourScore > theirScore ? 'win' : ourScore < theirScore ? 'lose' : 'draw',
+        location: fd.get('location').toString().trim(),
+        mvpId: fd.get('mvpId').toString() || null,
+        highlights: fd.get('highlights').toString().trim(),
+        photos: finalPhotos,
+      };
+
       const next = { ...gamesState };
       if (isEdit) {
         next.games = next.games.map((x) => (x.id === newGame.id ? newGame : x));
@@ -185,12 +316,15 @@ function openDialog(g, isEdit) {
         isEdit ? `update game ${newGame.date} vs ${newGame.opponent}` : `add game ${newGame.date} vs ${newGame.opponent}`
       );
       gamesState = next;
+      newPhotos.forEach((n) => URL.revokeObjectURL(n.previewUrl));
       modal.remove();
       render();
       showToast('保存しました', 'success');
     } catch (err) {
       submitBtn.disabled = false;
+      photoAddBtn.disabled = false;
       submitBtn.textContent = isEdit ? '更新' : '登録';
+      progressEl.style.display = 'none';
       if (err instanceof ConflictError) {
         showToast(err.message, 'error');
       } else {
@@ -203,8 +337,20 @@ function openDialog(g, isEdit) {
 async function deleteGame(id) {
   const g = gamesState.games.find((x) => x.id === id);
   if (!g) return;
-  if (!confirm(`${formatDate(g.date)} ${g.opponent} 戦を削除しますか？`)) return;
+  const photoCount = (g.photos || []).length;
+  const confirmMsg = photoCount > 0
+    ? `${formatDate(g.date)} ${g.opponent} 戦を削除しますか？\n（写真 ${photoCount} 枚も一緒に削除されます）`
+    : `${formatDate(g.date)} ${g.opponent} 戦を削除しますか？`;
+  if (!confirm(confirmMsg)) return;
   try {
+    // 写真を削除
+    for (const path of g.photos || []) {
+      try {
+        await deleteFile(path, null, `delete photo (game removed)`);
+      } catch (err) {
+        console.warn('photo delete failed', err);
+      }
+    }
     const next = { ...gamesState, games: gamesState.games.filter((x) => x.id !== id) };
     gamesSha = await writeJSON(
       CONFIG.DATA_PATHS.games,
@@ -222,4 +368,41 @@ async function deleteGame(id) {
       showToast('削除に失敗しました: ' + err.message, 'error');
     }
   }
+}
+
+// ========== Lightbox ==========
+function openLightbox(photos, startIdx, game) {
+  if (!photos || photos.length === 0) return;
+  let idx = startIdx;
+  const html = `
+    <div class="lightbox open" id="lightbox" role="dialog" aria-modal="true">
+      <button class="lightbox-close" id="lb-close" aria-label="閉じる">×</button>
+      <button class="lightbox-prev" id="lb-prev" aria-label="前へ">‹</button>
+      <button class="lightbox-next" id="lb-next" aria-label="次へ">›</button>
+      <img class="lightbox-img" id="lb-img" src="${escapeHtml(photos[idx])}" alt="" />
+      <div class="lightbox-caption" id="lb-caption"></div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', html);
+  const lb = document.getElementById('lightbox');
+  const img = document.getElementById('lb-img');
+  const cap = document.getElementById('lb-caption');
+  const update = () => {
+    img.src = photos[idx];
+    cap.textContent = `${formatDate(game.date)} vs ${game.opponent} (${idx + 1}/${photos.length})`;
+  };
+  update();
+  document.getElementById('lb-close').addEventListener('click', close);
+  document.getElementById('lb-prev').addEventListener('click', () => {
+    idx = (idx - 1 + photos.length) % photos.length;
+    update();
+  });
+  document.getElementById('lb-next').addEventListener('click', () => {
+    idx = (idx + 1) % photos.length;
+    update();
+  });
+  lb.addEventListener('click', (e) => {
+    if (e.target === lb) close();
+  });
+  function close() { lb.remove(); }
 }
