@@ -4,9 +4,9 @@
       "id": "g_motjt6c7lce1",
       "date": "2026-05-10",
       "opponent": "桃一",
-      "ourScore": 0,
+      "ourScore": 1,
       "theirScore": 0,
-      "result": "draw",
+      "result": "win",
       "isHome": false,
       "innings": [
         {
@@ -198,6 +198,12 @@
           "batterId": "m_moth46wbgufq",
           "result": "groundOut",
           "rbi": 0
+        },
+        {
+          "inning": 7,
+          "batterId": "m_motjwv3tufud",
+          "result": "double",
+          "rbi": 1
         }
       ]
     }
