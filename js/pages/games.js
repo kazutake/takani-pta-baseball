@@ -59,9 +59,6 @@ function render() {
       if (game) openLightbox(game.photos || [], idx, game);
     });
   });
-  list.querySelectorAll('[data-stats]').forEach((btn) => {
-    btn.addEventListener('click', () => openStatsDialog(btn.dataset.stats));
-  });
   list.querySelectorAll('[data-plays]').forEach((btn) => {
     btn.addEventListener('click', () => openPlaysDialog(btn.dataset.plays));
   });
@@ -119,263 +116,6 @@ function renderCardScoreboard(g) {
   `;
 }
 
-// ========== 選手成績 ==========
-const BATTING_FIELDS = [
-  { key: 'singles', label: 'ヒット' },
-  { key: 'doubles', label: '二塁打' },
-  { key: 'triples', label: '三塁打' },
-  { key: 'homeRuns', label: '本塁打' },
-  { key: 'rbis', label: '打点' },
-  { key: 'strikeouts', label: '三振' },
-  { key: 'flyOuts', label: 'フライアウト' },
-  { key: 'groundOuts', label: 'ゴロアウト' },
-  { key: 'reachedOnError', label: 'エラー(出塁)' },
-];
-
-const PITCHING_COUNTER_FIELDS = [
-  { key: 'strikeouts', label: '奪三振' },
-  { key: 'walks', label: '四球' },
-  { key: 'hitBatters', label: '死球' },
-  { key: 'errors', label: 'エラー' },
-  { key: 'hitsAllowed', label: '被安打' },
-];
-
-function emptyPlayerStats() {
-  return {
-    batting: Object.fromEntries(BATTING_FIELDS.map((f) => [f.key, 0])),
-    pitching: {
-      decision: null,
-      ...Object.fromEntries(PITCHING_COUNTER_FIELDS.map((f) => [f.key, 0])),
-    },
-  };
-}
-
-function isStatsEmpty(s) {
-  if (!s) return true;
-  const b = s.batting || {};
-  const p = s.pitching || {};
-  const battingEmpty = BATTING_FIELDS.every((f) => !(b[f.key] > 0));
-  const pitchingEmpty = !p.decision && PITCHING_COUNTER_FIELDS.every((f) => !(p[f.key] > 0));
-  return battingEmpty && pitchingEmpty;
-}
-
-function summaryText(stats) {
-  const b = stats.batting;
-  const hits = (b.singles || 0) + (b.doubles || 0) + (b.triples || 0) + (b.homeRuns || 0);
-  const pa = hits + (b.strikeouts || 0) + (b.flyOuts || 0) + (b.groundOuts || 0) + (b.reachedOnError || 0);
-  const dec = stats.pitching.decision === 'win' ? '勝' : stats.pitching.decision === 'loss' ? '負' : '';
-  if (pa === 0 && !dec && PITCHING_COUNTER_FIELDS.every((f) => !(stats.pitching[f.key] > 0))) {
-    return '<span style="color:var(--color-text-muted)">未入力</span>';
-  }
-  const parts = [];
-  if (pa > 0) parts.push(`${pa}打席 ${hits}安打`);
-  if (b.rbis > 0) parts.push(`打点${b.rbis}`);
-  if (dec) parts.push(`投手:${dec}`);
-  return parts.join(' / ');
-}
-
-function renderStatRow(cat, field, value) {
-  return `
-    <div class="stat-row" data-cat="${cat}" data-key="${field.key}">
-      <span class="stat-label">${field.label}</span>
-      <div class="stat-controls">
-        <button type="button" class="stat-btn" data-op="dec" aria-label="減らす">−</button>
-        <span class="stat-value">${value || 0}</span>
-        <button type="button" class="stat-btn stat-btn-plus" data-op="inc" aria-label="増やす">+</button>
-      </div>
-    </div>
-  `;
-}
-
-function renderStatsMemberCard(member, stats) {
-  return `
-    <div class="stats-member-card" data-member-id="${member.id}">
-      <button type="button" class="stats-member-header">
-        <span class="stats-member-name">${member.number != null ? `<span class="num-badge">#${member.number}</span> ` : ''}${escapeHtml(member.name)}</span>
-        <span class="stats-member-summary">${summaryText(stats)}</span>
-        <span class="stats-member-toggle">▼</span>
-      </button>
-      <div class="stats-member-body">
-        <div class="stats-section">
-          <h5>打撃</h5>
-          ${BATTING_FIELDS.map((f) => renderStatRow('batting', f, stats.batting[f.key])).join('')}
-        </div>
-        <div class="stats-section">
-          <h5>投手</h5>
-          <div class="stat-row" data-cat="pitching" data-key="decision">
-            <span class="stat-label">勝/負</span>
-            <div class="decision-buttons">
-              <button type="button" class="dec-btn ${stats.pitching.decision === 'win' ? 'active-win' : ''}" data-dec="win">勝</button>
-              <button type="button" class="dec-btn ${stats.pitching.decision === 'loss' ? 'active-loss' : ''}" data-dec="loss">負</button>
-              <button type="button" class="dec-btn ${!stats.pitching.decision ? 'active-none' : ''}" data-dec="">-</button>
-            </div>
-          </div>
-          ${PITCHING_COUNTER_FIELDS.map((f) => renderStatRow('pitching', f, stats.pitching[f.key])).join('')}
-        </div>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <button type="button" class="btn btn-sm stats-clear-btn" style="flex:1">この選手をクリア</button>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-function openStatsDialog(gameId) {
-  const game = gamesState.games.find((x) => x.id === gameId);
-  if (!game) return;
-  if (membersState.members.length === 0) {
-    showToast('先にメンバーを登録してください', 'error');
-    return;
-  }
-
-  const working = {};
-  for (const m of membersState.members) {
-    const existing = (game.playerStats && game.playerStats[m.id]) || null;
-    working[m.id] = existing
-      ? { batting: { ...emptyPlayerStats().batting, ...existing.batting }, pitching: { ...emptyPlayerStats().pitching, ...existing.pitching } }
-      : emptyPlayerStats();
-  }
-
-  const sortedMembers = [...membersState.members].sort((a, b) => {
-    const na = a.number ?? 999, nb = b.number ?? 999;
-    if (na !== nb) return na - nb;
-    return (a.name || '').localeCompare(b.name || '', 'ja');
-  });
-
-  const html = `
-    <div class="modal-backdrop open" id="stats-modal">
-      <div class="modal stats-modal">
-        <h3 style="margin:0 0 4px">📊 選手成績</h3>
-        <div class="card-meta" style="margin-bottom:12px">
-          ${escapeHtml(formatDate(game.date))} vs ${escapeHtml(game.opponent || '')}
-        </div>
-        <p style="font-size:.8rem;color:var(--color-text-muted);margin:0 0 8px">
-          選手をタップして展開 → +/- ボタンで入力 → 最後に「保存」
-        </p>
-        <div class="stats-list" id="stats-list">
-          ${sortedMembers.map((m) => renderStatsMemberCard(m, working[m.id])).join('')}
-        </div>
-        <div class="modal-actions" style="margin-top:12px">
-          <button type="button" class="btn" id="stats-cancel">キャンセル</button>
-          <button type="button" class="btn btn-primary" id="stats-save">保存</button>
-        </div>
-      </div>
-    </div>
-  `;
-  document.body.insertAdjacentHTML('beforeend', html);
-
-  const modal = document.getElementById('stats-modal');
-  const list = document.getElementById('stats-list');
-
-  function updateSummary(memberId) {
-    const card = list.querySelector(`.stats-member-card[data-member-id="${memberId}"]`);
-    if (card) card.querySelector('.stats-member-summary').innerHTML = summaryText(working[memberId]);
-  }
-
-  // 展開トグル
-  list.querySelectorAll('.stats-member-header').forEach((header) => {
-    header.addEventListener('click', () => {
-      header.closest('.stats-member-card').classList.toggle('expanded');
-    });
-  });
-
-  // +/- ボタン
-  list.addEventListener('click', (e) => {
-    const btn = e.target.closest('.stat-btn');
-    if (!btn) return;
-    const row = btn.closest('.stat-row');
-    const card = btn.closest('.stats-member-card');
-    const memberId = card.dataset.memberId;
-    const cat = row.dataset.cat;
-    const key = row.dataset.key;
-    const cur = working[memberId][cat][key] || 0;
-    const next = btn.dataset.op === 'inc' ? cur + 1 : Math.max(0, cur - 1);
-    working[memberId][cat][key] = next;
-    row.querySelector('.stat-value').textContent = next;
-    updateSummary(memberId);
-  });
-
-  // 勝/負ボタン
-  list.querySelectorAll('.decision-buttons').forEach((group) => {
-    group.querySelectorAll('.dec-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const card = btn.closest('.stats-member-card');
-        const memberId = card.dataset.memberId;
-        const val = btn.dataset.dec || null;
-        working[memberId].pitching.decision = val;
-        group.querySelectorAll('.dec-btn').forEach((b) => {
-          b.classList.remove('active-win', 'active-loss', 'active-none');
-        });
-        if (val === 'win') btn.classList.add('active-win');
-        else if (val === 'loss') btn.classList.add('active-loss');
-        else btn.classList.add('active-none');
-        updateSummary(memberId);
-      });
-    });
-  });
-
-  // クリアボタン
-  list.querySelectorAll('.stats-clear-btn').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const card = btn.closest('.stats-member-card');
-      const memberId = card.dataset.memberId;
-      if (!confirm('この選手の入力をすべてクリアしますか？')) return;
-      working[memberId] = emptyPlayerStats();
-      // 表示を更新
-      card.querySelectorAll('.stat-row').forEach((row) => {
-        const cat = row.dataset.cat, key = row.dataset.key;
-        if (key === 'decision') {
-          row.querySelectorAll('.dec-btn').forEach((b) => {
-            b.classList.remove('active-win', 'active-loss', 'active-none');
-            if (!b.dataset.dec) b.classList.add('active-none');
-          });
-        } else {
-          row.querySelector('.stat-value').textContent = '0';
-        }
-      });
-      updateSummary(memberId);
-    });
-  });
-
-  document.getElementById('stats-cancel').addEventListener('click', () => modal.remove());
-
-  document.getElementById('stats-save').addEventListener('click', async () => {
-    const saveBtn = document.getElementById('stats-save');
-    saveBtn.disabled = true;
-    saveBtn.textContent = '保存中...';
-    try {
-      const playerStats = {};
-      for (const memberId of Object.keys(working)) {
-        if (!isStatsEmpty(working[memberId])) {
-          playerStats[memberId] = working[memberId];
-        }
-      }
-      const updatedGame = { ...game, playerStats };
-      const next = {
-        ...gamesState,
-        games: gamesState.games.map((x) => (x.id === game.id ? updatedGame : x)),
-      };
-      gamesSha = await writeJSON(
-        CONFIG.DATA_PATHS.games,
-        next,
-        gamesSha,
-        `update player stats for game ${game.date} vs ${game.opponent}`
-      );
-      gamesState = next;
-      modal.remove();
-      render();
-      showToast('選手成績を保存しました', 'success');
-    } catch (err) {
-      saveBtn.disabled = false;
-      saveBtn.textContent = '保存';
-      if (err instanceof ConflictError) {
-        showToast(err.message, 'error');
-      } else {
-        showToast('保存に失敗しました: ' + err.message, 'error');
-      }
-    }
-  });
-}
 
 function renderGameCard(g) {
   const result = g.result || (g.ourScore > g.theirScore ? 'win' : g.ourScore < g.theirScore ? 'lose' : 'draw');
@@ -389,7 +129,6 @@ function renderGameCard(g) {
     ? membersState.members.find((m) => m.id === g.mvpId)?.name
     : null;
   const photos = g.photos || [];
-  const statsCount = g.playerStats ? Object.keys(g.playerStats).length : 0;
   const hasPlays = (g.ourPlays || []).length > 0 || (g.oppPlays || []).length > 0;
   const finalizedBadge = g.finalized
     ? '<span class="badge" style="background:var(--color-success);color:#fff;margin-left:4px">🏁 確定</span>'
@@ -416,14 +155,9 @@ function renderGameCard(g) {
           `).join('')}
         </div>
       ` : ''}
-      <div style="display:flex;gap:6px;margin-top:10px">
-        <button class="btn btn-sm" data-plays="${g.id}" style="flex:1">
-          📝 打席記録${(g.ourPlays || []).length > 0 ? ` (${(g.ourPlays || []).length}打席)` : ''}
-        </button>
-        <button class="btn btn-sm" data-stats="${g.id}" style="flex:1">
-          📊 手動成績${statsCount > 0 ? ` (${statsCount})` : ''}
-        </button>
-      </div>
+      <button class="btn btn-block btn-sm" data-plays="${g.id}" style="margin-top:10px">
+        📝 打席記録${(g.ourPlays || []).length > 0 ? ` (${(g.ourPlays || []).length}打席)` : ''}
+      </button>
     </div>
   `;
 }
@@ -459,19 +193,7 @@ function openDialog(g, isEdit) {
   const removedPhotos = [];
   const newPhotos = [];
 
-  // イニング別スコアの初期状態
-  let innings;
-  if (g.innings && g.innings.length > 0) {
-    innings = g.innings.map((i) => ({ top: Number(i.top || 0), bottom: Number(i.bottom || 0) }));
-  } else if ((g.ourScore || 0) > 0 || (g.theirScore || 0) > 0) {
-    // 既存データの移行: 1回に総得点を入れる（その他は0）
-    innings = Array.from({ length: 7 }, () => ({ top: 0, bottom: 0 }));
-    if (!g.isHome) innings[0] = { top: g.ourScore || 0, bottom: g.theirScore || 0 };
-    else innings[0] = { top: g.theirScore || 0, bottom: g.ourScore || 0 };
-  } else {
-    innings = Array.from({ length: 7 }, () => ({ top: 0, bottom: 0 }));
-  }
-  let isHome = !!g.isHome;
+  // 先攻/後攻フラグは打席記録モーダルの[打順]タブで設定する
 
   const html = `
     <div class="modal-backdrop open" id="game-modal" role="dialog" aria-modal="true">
@@ -485,21 +207,6 @@ function openDialog(g, isEdit) {
           <div class="field">
             <label class="field-label">対戦相手</label>
             <input class="field-input" type="text" name="opponent" value="${escapeHtml(g.opponent)}" required />
-          </div>
-          <div class="field">
-            <label class="field-label">スコア（イニング別）</label>
-            <div class="home-toggle">
-              <span style="font-size:.8rem;color:var(--color-text-muted);margin-right:8px">当チームは</span>
-              <button type="button" class="ht-btn" data-home="false">先攻 (表)</button>
-              <button type="button" class="ht-btn" data-home="true">後攻 (裏)</button>
-            </div>
-            <div class="scoreboard-wrapper">
-              <div id="scoreboard"></div>
-            </div>
-            <div style="display:flex;gap:6px;margin-top:6px">
-              <button type="button" class="btn btn-sm" id="add-inning">＋ 回</button>
-              <button type="button" class="btn btn-sm" id="rem-inning">− 回</button>
-            </div>
           </div>
           <div class="field">
             <label class="field-label">場所</label>
@@ -588,63 +295,6 @@ function openDialog(g, isEdit) {
   renderExisting();
   renderNew();
 
-  // ----- イニング別スコア -----
-  function renderScoreboard() {
-    const sb = document.getElementById('scoreboard');
-    const headerCells = innings.map((_, i) => `<th>${i + 1}</th>`).join('');
-    const topName = isHome ? '相手' : '当ﾁｰﾑ';
-    const bottomName = isHome ? '当ﾁｰﾑ' : '相手';
-    const topCells = innings.map((inn, i) => `<td><input type="number" min="0" inputmode="numeric" class="inning-cell" data-pos="top" data-i="${i}" value="${inn.top}"></td>`).join('');
-    const bottomCells = innings.map((inn, i) => `<td><input type="number" min="0" inputmode="numeric" class="inning-cell" data-pos="bottom" data-i="${i}" value="${inn.bottom}"></td>`).join('');
-    const totTop = innings.reduce((s, i) => s + (i.top || 0), 0);
-    const totBottom = innings.reduce((s, i) => s + (i.bottom || 0), 0);
-    sb.innerHTML = `
-      <table class="scoreboard">
-        <thead>
-          <tr><th></th>${headerCells}<th>計</th></tr>
-        </thead>
-        <tbody>
-          <tr class="${isHome ? '' : 'us-row'}">
-            <td>${topName}</td>${topCells}<td class="total" id="total-top">${totTop}</td>
-          </tr>
-          <tr class="${isHome ? 'us-row' : ''}">
-            <td>${bottomName}</td>${bottomCells}<td class="total" id="total-bottom">${totBottom}</td>
-          </tr>
-        </tbody>
-      </table>
-    `;
-    sb.querySelectorAll('.inning-cell').forEach((input) => {
-      input.addEventListener('input', () => {
-        const pos = input.dataset.pos;
-        const i = Number(input.dataset.i);
-        innings[i][pos] = Math.max(0, Number(input.value) || 0);
-        document.getElementById('total-top').textContent = innings.reduce((s, x) => s + x.top, 0);
-        document.getElementById('total-bottom').textContent = innings.reduce((s, x) => s + x.bottom, 0);
-      });
-      input.addEventListener('focus', () => input.select());
-    });
-  }
-  renderScoreboard();
-
-  modal.querySelectorAll('.ht-btn').forEach((btn) => {
-    btn.classList.toggle('active', btn.dataset.home === String(isHome));
-    btn.addEventListener('click', () => {
-      isHome = btn.dataset.home === 'true';
-      modal.querySelectorAll('.ht-btn').forEach((b) => b.classList.toggle('active', b.dataset.home === String(isHome)));
-      renderScoreboard();
-    });
-  });
-  document.getElementById('add-inning').addEventListener('click', () => {
-    if (innings.length >= 12) return;
-    innings.push({ top: 0, bottom: 0 });
-    renderScoreboard();
-  });
-  document.getElementById('rem-inning').addEventListener('click', () => {
-    if (innings.length <= 1) return;
-    innings.pop();
-    renderScoreboard();
-  });
-
   photoAddBtn.addEventListener('click', () => photoInput.click());
   photoInput.addEventListener('change', () => {
     for (const file of photoInput.files) {
@@ -662,10 +312,9 @@ function openDialog(g, isEdit) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const fd = new FormData(form);
-    const totTop = innings.reduce((s, i) => s + (i.top || 0), 0);
-    const totBottom = innings.reduce((s, i) => s + (i.bottom || 0), 0);
-    const ourScore = isHome ? totBottom : totTop;
-    const theirScore = isHome ? totTop : totBottom;
+    // スコアは打席記録から自動算出される。新規/編集で打席が無い間は g の値（0）を保持。
+    const ourScore = g.ourScore || 0;
+    const theirScore = g.theirScore || 0;
     const gameId = g.id || uid('g');
 
     submitBtn.disabled = true;
@@ -703,18 +352,13 @@ function openDialog(g, isEdit) {
         ...existingPhotos.filter((p) => !removedPhotos.includes(p)),
         ...uploadedPaths,
       ];
-      // 既存のフィールド (oppPlays, finalized, ourPlays, ourLineup, playerStats など)
-      // を漏れなく保持するため、まず g を展開してからフォーム入力値で上書きする
+      // 既存のフィールド (oppPlays, finalized, ourPlays, ourLineup, isHome, innings,
+      // playerStats など) を漏れなく保持するため、まず g を展開してからフォーム入力値で上書きする
       const newGame = {
         ...g,
         id: gameId,
         date: fd.get('date'),
         opponent: fd.get('opponent').toString().trim(),
-        ourScore,
-        theirScore,
-        result: ourScore > theirScore ? 'win' : ourScore < theirScore ? 'lose' : 'draw',
-        isHome,
-        innings: innings.map((i) => ({ top: i.top || 0, bottom: i.bottom || 0 })),
         location: fd.get('location').toString().trim(),
         mvpId: fd.get('mvpId').toString() || null,
         highlights: fd.get('highlights').toString().trim(),
@@ -845,6 +489,7 @@ function openPlaysDialog(gameId) {
   let lineup = normalizeLineup(game.ourLineup);
   let plays = (game.ourPlays || []).map((p) => ({ ...p }));
   let oppPlays = (game.oppPlays || []).map((p) => ({ ...p }));
+  let isHome = !!game.isHome;
   let activeTab = lineup.length === 0 ? 'lineup' : 'offense';
 
   // 攻撃タブの状態
@@ -919,6 +564,7 @@ function openPlaysDialog(gameId) {
               <span class="lineup-pos">${i + 1}</span>
               <span class="lineup-name">${m ? `${m.number != null ? `<span class="num-badge">#${m.number}</span> ` : ''}${escapeHtml(m.name)}` : '<span style="color:var(--color-danger)">削除済</span>'}</span>
               <div class="lineup-actions">
+                <button type="button" class="lineup-icon-btn" data-sub-row title="交代">🔄</button>
                 <button type="button" class="lineup-icon-btn" data-up ${i === 0 ? 'disabled' : ''}>↑</button>
                 <button type="button" class="lineup-icon-btn" data-down ${i === lineup.length - 1 ? 'disabled' : ''}>↓</button>
                 <button type="button" class="lineup-icon-btn" data-remove>×</button>
@@ -943,6 +589,11 @@ function openPlaysDialog(gameId) {
     });
 
     document.getElementById('tab-lineup').innerHTML = `
+      <div class="home-toggle" style="margin-bottom:10px">
+        <span style="font-size:.8rem;color:var(--color-text-muted);margin-right:6px">当チームは</span>
+        <button type="button" class="ht-btn ${!isHome ? 'active' : ''}" data-home="false">先攻 (表)</button>
+        <button type="button" class="ht-btn ${isHome ? 'active' : ''}" data-home="true">後攻 (裏)</button>
+      </div>
       <p style="font-size:.8rem;color:var(--color-text-muted);margin:0 0 8px">
         ↑↓で並び替え、×で削除。10人以上もOK。各打者にポジションを試合ごとに設定できます。
       </p>
@@ -962,6 +613,12 @@ function openPlaysDialog(gameId) {
     `;
 
     const tabEl = document.getElementById('tab-lineup');
+    tabEl.querySelectorAll('.ht-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        isHome = btn.dataset.home === 'true';
+        renderLineupTab();
+      });
+    });
     tabEl.querySelectorAll('[data-up]').forEach((btn) => {
       btn.addEventListener('click', () => {
         const i = Number(btn.closest('.lineup-row').dataset.pos);
@@ -999,6 +656,12 @@ function openPlaysDialog(gameId) {
       btn.addEventListener('click', () => {
         lineup.push({ memberId: btn.dataset.addMember, position: '' });
         renderLineupTab();
+      });
+    });
+    tabEl.querySelectorAll('[data-sub-row]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const i = Number(btn.closest('.lineup-row').dataset.pos);
+        openSubstitutePicker(i);
       });
     });
   }
@@ -1576,6 +1239,7 @@ function openPlaysDialog(gameId) {
         ourLineup: lineup,
         ourPlays: plays,
         oppPlays: oppPlays,
+        isHome,
         finalized,
       };
       if (plays.length > 0 || oppPlays.length > 0) {
