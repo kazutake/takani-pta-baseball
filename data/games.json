@@ -283,6 +283,12 @@
           "result": "walk",
           "rbi": 0,
           "pitcherId": "m_motkwoito899"
+        },
+        {
+          "inning": 6,
+          "result": "flyOut",
+          "rbi": 0,
+          "pitcherId": "m_motkwoito899"
         }
       ],
       "result": "win",
