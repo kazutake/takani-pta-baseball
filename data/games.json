@@ -12,7 +12,48 @@
       "mvpId": null,
       "highlights": "",
       "photos": [],
-      "eventId": "e_motobr6u8ag9"
+      "eventId": "e_motobr6u8ag9",
+      "ourLineup": [
+        {
+          "memberId": "m_moth46wbgufq",
+          "position": ""
+        },
+        {
+          "memberId": "m_motkv9ascdpx",
+          "position": ""
+        },
+        {
+          "memberId": "m_motkwoito899",
+          "position": ""
+        },
+        {
+          "memberId": "m_motkxf6edadf",
+          "position": ""
+        },
+        {
+          "memberId": "m_motkx56twsn6",
+          "position": ""
+        },
+        {
+          "memberId": "m_motkvdpsv10y",
+          "position": ""
+        },
+        {
+          "memberId": "m_motkwzcfqnxm",
+          "position": ""
+        },
+        {
+          "memberId": "m_motkv4fnrkmz",
+          "position": ""
+        },
+        {
+          "memberId": "m_motkvjfh8tbi",
+          "position": ""
+        }
+      ],
+      "ourPlays": [],
+      "oppPlays": [],
+      "finalized": false
     }
   ]
 }
