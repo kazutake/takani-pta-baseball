@@ -333,7 +333,8 @@ function openDialog(g, isEdit) {
             <label class="field-label">試合終了 / スコア確定</label>
             <div id="finalize-bar"></div>
             <p style="font-size:.75rem;color:var(--color-text-muted);margin:6px 0 0">
-              ※ 確定するとカードに「🏁 確定」バッジが付きます。後から解除も可能です。実際に保存されるのは「更新」を押したときです。
+              ※ ボタンをタップすると保存して画面を閉じます。<br>
+              ※ 確定するとカードに「🏁 確定」バッジが付き、打席記録の編集ができなくなります（後から解除可能）。
             </p>
           </div>
         ` : ''}
@@ -352,6 +353,7 @@ function openDialog(g, isEdit) {
   const progressEl = document.getElementById('upload-progress');
 
   // 試合終了 / スコア確定トグル（編集時のみ）
+  // ボタンタップで「確定状態を切替 → フォーム送信 → 自動保存 → モーダル閉じる」
   function renderFinalizeBar() {
     const bar = document.getElementById('finalize-bar');
     if (!bar) return;
@@ -364,15 +366,15 @@ function openDialog(g, isEdit) {
          </button>`;
     if (finalized) {
       document.getElementById('unfinalize-btn').addEventListener('click', () => {
-        if (!confirm('確定を解除して再編集モードに戻しますか？\n（「更新」ボタンで保存されます）')) return;
+        if (!confirm('確定を解除して再編集モードに戻しますか？\n（保存して閉じます）')) return;
         finalized = false;
-        renderFinalizeBar();
+        form.requestSubmit();
       });
     } else {
       document.getElementById('finalize-btn').addEventListener('click', () => {
-        if (!confirm('試合を終了してスコアを確定しますか？\n（「更新」ボタンで保存されます。後で解除も可能です）')) return;
+        if (!confirm('試合を終了してスコアを確定しますか？\n（保存して閉じます。後で解除も可能です）')) return;
         finalized = true;
-        renderFinalizeBar();
+        form.requestSubmit();
       });
     }
   }
@@ -689,13 +691,20 @@ function openPlaysDialog(gameId) {
     }
   }
 
+  const readOnly = !!game.finalized;
   const html = `
     <div class="modal-backdrop open" id="plays-modal">
-      <div class="modal plays-modal">
-        <h3 style="margin:0 0 4px">📝 打席記録 ${game.finalized ? '<span class="badge badge-win" style="margin-left:4px">🏁 確定済</span>' : ''}</h3>
+      <div class="modal plays-modal ${readOnly ? 'play-readonly' : ''}">
+        <h3 style="margin:0 0 4px">📝 打席記録 ${readOnly ? '<span class="badge badge-win" style="margin-left:4px">🏁 確定済</span>' : ''}</h3>
         <div class="card-meta" style="margin-bottom:8px">
           ${escapeHtml(formatDate(game.date))} vs ${escapeHtml(game.opponent || '')}
         </div>
+        ${readOnly ? `
+          <div style="background:#fffbe6;border:1px solid #f0d160;color:#5c4400;padding:10px 12px;border-radius:6px;margin-bottom:8px;font-size:.85rem;line-height:1.5">
+            🏁 このスコアは<strong>確定済み</strong>です。打席の編集はできません。<br>
+            修正したい場合は「試合の編集」→ 一番下の「✓ スコア確定済み」ボタンで解除してください。
+          </div>
+        ` : ''}
         <div class="play-tabs">
           <button type="button" class="play-tab" data-tab="lineup">打順</button>
           <button type="button" class="play-tab" data-tab="offense">攻撃</button>
@@ -1470,6 +1479,10 @@ function openPlaysDialog(gameId) {
   renderDefenseTab();
 
   async function savePlays({ silent = false, message = '保存しました' } = {}) {
+    if (readOnly) {
+      showToast('確定済みのため編集できません', 'error');
+      throw new Error('readonly');
+    }
     try {
       let updatedGame = {
         ...game,

@@ -787,6 +787,26 @@ table.scoreboard tr.us-row td:first-child {
 .dec-btn.active-loss { background: var(--color-danger); color: #fff; border-color: var(--color-danger); }
 .dec-btn.active-none { background: var(--color-text-muted); color: #fff; border-color: var(--color-text-muted); }
 
+/* ========== Plays Modal: readonly (確定済み) ========== */
+.play-readonly .play-entry,
+.play-readonly .entry-toggle,
+.play-readonly .lineup-actions,
+.play-readonly .lineup-row-position,
+.play-readonly .home-toggle,
+.play-readonly .play-edit-btn,
+.play-readonly .play-del-btn,
+.play-readonly .member-pool,
+.play-readonly .member-pool-btn,
+.play-readonly #change-pitcher,
+.play-readonly #add-yes-attendees,
+.play-readonly #add-maybe-attendees,
+.play-readonly [data-add-member] {
+  display: none !important;
+}
+.play-readonly .lineup-row {
+  cursor: default;
+}
+
 /* ========== Plays Modal (打席記録) ========== */
 .plays-modal {
   max-width: 560px;
