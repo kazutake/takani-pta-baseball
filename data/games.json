@@ -361,9 +361,39 @@
           "result": "otherOut",
           "rbi": 0,
           "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 6,
+          "result": "strikeout",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 6,
+          "result": "flyOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 7,
+          "result": "groundOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 7,
+          "result": "otherOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 7,
+          "result": "groundOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
         }
       ],
-      "finalized": false
+      "finalized": true
     }
   ]
 }
