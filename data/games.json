@@ -55,7 +55,7 @@
           "position": "投手"
         },
         {
-          "memberId": "m_motkv9ascdpx",
+          "memberId": "m_motkxf6edadf",
           "position": "捕手"
         },
         {
@@ -243,25 +243,55 @@
         {
           "inning": 7,
           "batterId": "m_motkwzcfqnxm",
-          "result": "flyOut",
-          "rbi": 0
-        },
-        {
-          "inning": 7,
-          "batterId": "m_moth46wbgufq",
-          "result": "walk",
-          "rbi": 0
-        },
-        {
-          "inning": 7,
-          "batterId": "m_motkvjfh8tbi",
           "result": "strikeout",
           "rbi": 0
         },
         {
           "inning": 7,
-          "batterId": "m_motkv9ascdpx",
+          "batterId": "m_moth46wbgufq",
           "result": "flyOut",
+          "rbi": 0
+        },
+        {
+          "inning": 7,
+          "batterId": "m_motkvjfh8tbi",
+          "result": "groundOut",
+          "rbi": 0
+        },
+        {
+          "inning": 8,
+          "batterId": "m_motkxf6edadf",
+          "result": "groundOut",
+          "rbi": 0
+        },
+        {
+          "inning": 8,
+          "batterId": "m_motkv4fnrkmz",
+          "result": "flyOut",
+          "rbi": 0
+        },
+        {
+          "inning": 8,
+          "batterId": "m_motkvdpsv10y",
+          "result": "groundOut",
+          "rbi": 0
+        },
+        {
+          "inning": 9,
+          "batterId": "m_motkyugdfake",
+          "result": "flyOut",
+          "rbi": 0
+        },
+        {
+          "inning": 9,
+          "batterId": "m_motkxo2u89qy",
+          "result": "groundOut",
+          "rbi": 0
+        },
+        {
+          "inning": 9,
+          "batterId": "m_motkwoito899",
+          "result": "otherOut",
           "rbi": 0
         }
       ],
@@ -382,7 +412,7 @@
         },
         {
           "inning": 7,
-          "result": "otherOut",
+          "result": "flyOut",
           "rbi": 0,
           "pitcherId": "m_moth46wbgufq"
         },
@@ -394,9 +424,45 @@
         },
         {
           "inning": 7,
-          "result": "otherOut",
+          "result": "strikeout",
           "rbi": 0,
           "pitcherId": "m_moth46wbgufq"
+        },
+        {
+          "inning": 8,
+          "result": "strikeout",
+          "rbi": 0,
+          "pitcherId": "m_moth46wbgufq"
+        },
+        {
+          "inning": 8,
+          "result": "flyOut",
+          "rbi": 0,
+          "pitcherId": "m_moth46wbgufq"
+        },
+        {
+          "inning": 8,
+          "result": "groundOut",
+          "rbi": 0,
+          "pitcherId": "m_moth46wbgufq"
+        },
+        {
+          "inning": 9,
+          "result": "groundOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 9,
+          "result": "groundOut",
+          "rbi": 0,
+          "pitcherId": "m_motkwoito899"
+        },
+        {
+          "inning": 9,
+          "result": "groundOut",
+          "rbi": 0,
+          "pitcherId": "m_motkwoito899"
         }
       ],
       "finalized": false
