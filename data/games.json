@@ -352,7 +352,7 @@
         }
       ],
       "result": "win",
-      "finalized": false
+      "finalized": true
     }
   ]
 }
