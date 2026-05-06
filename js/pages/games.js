@@ -320,16 +320,6 @@ function openDialog(g, isEdit) {
             </p>
           </div>
 
-          ${isEdit ? `
-            <div class="field">
-              <label class="field-label">試合終了 / スコア確定</label>
-              <div id="finalize-bar"></div>
-              <p style="font-size:.75rem;color:var(--color-text-muted);margin:6px 0 0">
-                ※ 確定するとカードに「🏁 確定」バッジが付きます。後から解除も可能です。実際に保存されるのは「更新」を押したときです。
-              </p>
-            </div>
-          ` : ''}
-
           <div id="upload-progress" style="display:none;margin:12px 0;font-size:.85rem;color:var(--color-text-muted);text-align:center"></div>
 
           <div class="modal-actions">
@@ -337,6 +327,16 @@ function openDialog(g, isEdit) {
             <button type="submit" class="btn btn-primary" id="game-submit">${isEdit ? '更新' : '登録'}</button>
           </div>
         </form>
+
+        ${isEdit ? `
+          <div class="field" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--color-border)">
+            <label class="field-label">試合終了 / スコア確定</label>
+            <div id="finalize-bar"></div>
+            <p style="font-size:.75rem;color:var(--color-text-muted);margin:6px 0 0">
+              ※ 確定するとカードに「🏁 確定」バッジが付きます。後から解除も可能です。実際に保存されるのは「更新」を押したときです。
+            </p>
+          </div>
+        ` : ''}
       </div>
     </div>
   `;
@@ -705,8 +705,7 @@ function openPlaysDialog(gameId) {
         <div class="play-tab-content" id="tab-offense"></div>
         <div class="play-tab-content" id="tab-defense"></div>
         <div class="modal-actions" style="margin-top:8px">
-          <button type="button" class="btn" id="plays-cancel">キャンセル</button>
-          <button type="button" class="btn btn-primary" id="plays-save">保存</button>
+          <button type="button" class="btn btn-primary btn-block" id="plays-close">閉じる</button>
         </div>
       </div>
     </div>
@@ -829,40 +828,44 @@ function openPlaysDialog(gameId) {
 
     const tabEl = document.getElementById('tab-lineup');
     tabEl.querySelectorAll('.ht-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         isHome = btn.dataset.home === 'true';
         renderLineupTab();
+        await autoSave({ silent: true });
       });
     });
     tabEl.querySelectorAll('[data-up]').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const i = Number(btn.closest('.lineup-row').dataset.pos);
         if (i > 0) {
           [lineup[i - 1], lineup[i]] = [lineup[i], lineup[i - 1]];
           renderLineupTab();
+          await autoSave({ silent: true });
         }
       });
     });
     tabEl.querySelectorAll('[data-down]').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const i = Number(btn.closest('.lineup-row').dataset.pos);
         if (i < lineup.length - 1) {
           [lineup[i], lineup[i + 1]] = [lineup[i + 1], lineup[i]];
           renderLineupTab();
+          await autoSave({ silent: true });
         }
       });
     });
     tabEl.querySelectorAll('[data-remove]').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const i = Number(btn.closest('.lineup-row').dataset.pos);
         const m = memberById(lineup[i].memberId);
         if (!confirm(`「${m ? m.name : '?'}」を打順から外しますか？\n（過去の打席記録は残ります）`)) return;
         lineup.splice(i, 1);
         renderLineupTab();
+        await autoSave({ silent: true });
       });
     });
     tabEl.querySelectorAll('[data-pos-select]').forEach((sel) => {
-      sel.addEventListener('change', () => {
+      sel.addEventListener('change', async () => {
         const i = Number(sel.dataset.posSelect);
         const newPos = sel.value;
         // 「投手」を選んだ場合、ほかの投手は自動で外す（同時に2人投手は不可）
@@ -873,12 +876,14 @@ function openPlaysDialog(gameId) {
         }
         lineup[i].position = newPos;
         renderLineupTab();
+        await autoSave({ silent: true });
       });
     });
     tabEl.querySelectorAll('[data-add-member]').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         lineup.push({ memberId: btn.dataset.addMember, position: '' });
         renderLineupTab();
+        await autoSave({ silent: true });
       });
     });
     tabEl.querySelectorAll('[data-sub-row]').forEach((btn) => {
@@ -889,7 +894,7 @@ function openPlaysDialog(gameId) {
     });
 
     // 出席者を一括追加
-    function addAttendeesByStatus(targetStatus) {
+    async function addAttendeesByStatus(targetStatus) {
       const att = attendanceState.attendance[game.eventId] || {};
       const ids = Object.keys(att).filter((mid) => att[mid] === targetStatus);
       const usedNow = new Set(lineup.map((e) => e.memberId));
@@ -907,7 +912,7 @@ function openPlaysDialog(gameId) {
         lineup.push({ memberId: m.id, position: '' });
       }
       renderLineupTab();
-      showToast(`${toAdd.length}名を打順に追加しました`, 'success');
+      await autoSave({ message: `${toAdd.length}名を打順に追加しました` });
     }
     document.getElementById('add-yes-attendees')?.addEventListener('click', () => addAttendeesByStatus('yes'));
     document.getElementById('add-maybe-attendees')?.addEventListener('click', () => addAttendeesByStatus('maybe'));
@@ -1020,7 +1025,7 @@ function openPlaysDialog(gameId) {
       pendingRBI = Math.min(4, pendingRBI + 1);
       document.getElementById('rbi-display').textContent = pendingRBI;
     });
-    document.getElementById('confirm-pa').addEventListener('click', () => {
+    document.getElementById('confirm-pa').addEventListener('click', async () => {
       if (!pendingResult) return;
       const inningRecorded = currentInning();
       plays.push({
@@ -1032,6 +1037,9 @@ function openPlaysDialog(gameId) {
       pendingResult = null;
       pendingRBI = 0;
       manualInning = null;
+      try {
+        await savePlays({ silent: true });
+      } catch { return; }
       // 3アウトで自動的に守備タブへ切替（最新イニングのみ）
       const outsAfterPA = outsInInning(plays, inningRecorded);
       const maxInning = plays.length > 0 ? Math.max(...plays.map((p) => p.inning)) : 1;
@@ -1042,6 +1050,7 @@ function openPlaysDialog(gameId) {
         showToast(`${inningRecorded}回 3アウト → 守備に切替`, 'success');
       } else {
         renderOffenseTab();
+        showToast('記録しました', 'success');
       }
     });
     document.getElementById('prev-inning').addEventListener('click', () => {
@@ -1054,13 +1063,14 @@ function openPlaysDialog(gameId) {
       renderOffenseTab();
     });
     tabEl.querySelectorAll('[data-play-del]').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const idx = Number(btn.dataset.playDel);
         const p = plays[idx];
         const m = memberById(p.batterId);
         if (!confirm(`${p.inning}回 ${m ? m.name : '?'} の打席を削除しますか？`)) return;
         plays.splice(idx, 1);
         renderOffenseTab();
+        await autoSave({ message: '削除しました' });
       });
     });
     tabEl.querySelectorAll('[data-play-edit]').forEach((btn) => {
@@ -1069,9 +1079,10 @@ function openPlaysDialog(gameId) {
         openPlayEditPopup({
           play: plays[idx],
           isOffense: true,
-          onSave: (updated) => {
+          onSave: async (updated) => {
             plays[idx] = updated;
             renderOffenseTab();
+            await autoSave({ message: '更新しました' });
           },
         });
       });
@@ -1126,7 +1137,7 @@ function openPlaysDialog(gameId) {
     document.body.insertAdjacentHTML('beforeend', html);
     const backdrop = document.getElementById('sub-picker');
     backdrop.querySelectorAll('[data-pick]').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const newMemberId = btn.dataset.pick;
         const newMember = memberById(newMemberId);
         // ポジションは引き継ぐ
@@ -1137,7 +1148,7 @@ function openPlaysDialog(gameId) {
         backdrop.remove();
         renderOffenseTab();
         renderLineupTab();
-        showToast(`${currentMember ? currentMember.name : '?'} → ${newMember ? newMember.name : '?'} に交代`, 'success');
+        await autoSave({ message: `${currentMember ? currentMember.name : '?'} → ${newMember ? newMember.name : '?'} に交代` });
       });
     });
     document.getElementById('sub-cancel').addEventListener('click', () => backdrop.remove());
@@ -1242,7 +1253,7 @@ function openPlaysDialog(gameId) {
       pendingDefRBI = Math.min(4, pendingDefRBI + 1);
       document.getElementById('def-rbi-display').textContent = pendingDefRBI;
     });
-    document.getElementById('confirm-def-pa').addEventListener('click', () => {
+    document.getElementById('confirm-def-pa').addEventListener('click', async () => {
       if (!pendingDefResult) return;
       const inningRecorded = currentDefInning();
       oppPlays.push({
@@ -1254,6 +1265,9 @@ function openPlaysDialog(gameId) {
       pendingDefResult = null;
       pendingDefRBI = 0;
       manualDefInning = null;
+      try {
+        await savePlays({ silent: true });
+      } catch { return; }
       // 3アウトで自動的に攻撃タブへ切替（最新イニングのみ）
       const outsAfterPA = outsInInning(oppPlays, inningRecorded);
       const maxInning = oppPlays.length > 0 ? Math.max(...oppPlays.map((p) => p.inning)) : 1;
@@ -1264,6 +1278,7 @@ function openPlaysDialog(gameId) {
         showToast(`${inningRecorded}回 3アウト → 攻撃に切替`, 'success');
       } else {
         renderDefenseTab();
+        showToast('記録しました', 'success');
       }
     });
     document.getElementById('def-prev-inning').addEventListener('click', () => {
@@ -1276,21 +1291,22 @@ function openPlaysDialog(gameId) {
       renderDefenseTab();
     });
     document.getElementById('change-pitcher').addEventListener('click', () => {
-      openPitcherPicker((picked) => {
+      openPitcherPicker(async (picked) => {
         changePitcher(picked);
         renderDefenseTab();
         renderLineupTab();
         const newPitcher = picked ? memberById(picked) : null;
-        showToast(newPitcher ? `投手を ${newPitcher.name} に変更` : '投手なしに変更', 'success');
+        await autoSave({ message: newPitcher ? `投手を ${newPitcher.name} に変更` : '投手なしに変更' });
       });
     });
     tabEl.querySelectorAll('[data-defplay-del]').forEach((btn) => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const idx = Number(btn.dataset.defplayDel);
         const p = oppPlays[idx];
         if (!confirm(`${p.inning}回 相手の打席（${resultLabel(p.result)}）を削除しますか？`)) return;
         oppPlays.splice(idx, 1);
         renderDefenseTab();
+        await autoSave({ message: '削除しました' });
       });
     });
     tabEl.querySelectorAll('[data-defplay-edit]').forEach((btn) => {
@@ -1299,9 +1315,10 @@ function openPlaysDialog(gameId) {
         openPlayEditPopup({
           play: oppPlays[idx],
           isOffense: false,
-          onSave: (updated) => {
+          onSave: async (updated) => {
             oppPlays[idx] = updated;
             renderDefenseTab();
+            await autoSave({ message: '更新しました' });
           },
         });
       });
@@ -1452,14 +1469,8 @@ function openPlaysDialog(gameId) {
   renderOffenseTab();
   renderDefenseTab();
 
-  async function savePlays({ closeAfter = true, message = '保存しました' } = {}) {
-    const saveBtn = document.getElementById('plays-save');
-    if (saveBtn) {
-      saveBtn.disabled = true;
-      saveBtn.textContent = '保存中...';
-    }
+  async function savePlays({ silent = false, message = '保存しました' } = {}) {
     try {
-      // game.finalized は ...game の展開でそのまま保持される（試合の編集ダイアログで管理）
       let updatedGame = {
         ...game,
         ourLineup: lineup,
@@ -1487,24 +1498,20 @@ function openPlaysDialog(gameId) {
         `update plays for game ${game.date} vs ${game.opponent}`,
       );
       gamesState = next;
-      // game オブジェクトを更新（再編集時に整合性保つため）
       Object.assign(game, updatedGame);
-      if (closeAfter) modal.remove();
       render();
-      showToast(message, 'success');
+      if (!silent) showToast(message, 'success');
     } catch (err) {
-      if (saveBtn) {
-        saveBtn.disabled = false;
-        saveBtn.textContent = '保存';
-      }
       if (err instanceof ConflictError) showToast(err.message, 'error');
       else showToast('保存に失敗しました: ' + err.message, 'error');
       throw err;
     }
   }
 
-  document.getElementById('plays-cancel').addEventListener('click', () => modal.remove());
-  document.getElementById('plays-save').addEventListener('click', () => {
-    savePlays({ closeAfter: true, message: '打席記録を保存しました' });
-  });
+  // 自動保存ヘルパー: 失敗時は savePlays が toast を出す
+  async function autoSave(opts = {}) {
+    try { await savePlays(opts); } catch { /* already handled */ }
+  }
+
+  document.getElementById('plays-close').addEventListener('click', () => modal.remove());
 }
