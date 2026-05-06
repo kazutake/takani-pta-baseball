@@ -109,24 +109,70 @@ function aggregateStats(memberId) {
   return r;
 }
 
-function formatBattingAvg(hits, pa) {
-  if (pa === 0) return '.---';
-  const avg = hits / pa;
+function formatBattingAvg(hits, ab) {
+  if (ab === 0) return '.---';
+  const avg = hits / ab;
   return avg.toFixed(3).replace(/^0+/, '');
 }
 
-function render() {
-  const list = document.getElementById('members-list');
-  const members = [...membersState.members].sort((a, b) => {
-    const na = a.number ?? 999, nb = b.number ?? 999;
-    if (na !== nb) return na - nb;
-    return (a.name || '').localeCompare(b.name || '', 'ja');
+const SORT_OPTIONS = [
+  { key: 'number_asc', label: '背番号順', cmp: (a, b) => (a.number ?? 999) - (b.number ?? 999) || (a.name || '').localeCompare(b.name || '', 'ja'), highlight: null },
+  { key: 'name_asc', label: '名前順', cmp: (a, b) => (a.name || '').localeCompare(b.name || '', 'ja'), highlight: null },
+  { key: 'avg_desc', label: '打率（高い順）', cmp: (a, b) => (b._avg ?? 0) - (a._avg ?? 0) || b._stats.atBats - a._stats.atBats, highlight: 'avg' },
+  { key: 'pa_desc', label: '打席（多い順）', cmp: (a, b) => b._stats.plateAppearances - a._stats.plateAppearances, highlight: 'pa' },
+  { key: 'ab_desc', label: '打数（多い順）', cmp: (a, b) => b._stats.atBats - a._stats.atBats, highlight: 'ab' },
+  { key: 'hits_desc', label: '安打（多い順）', cmp: (a, b) => b._stats.hits - a._stats.hits, highlight: 'hits' },
+  { key: 'hr_desc', label: '本塁打（多い順）', cmp: (a, b) => b._stats.homeRuns - a._stats.homeRuns, highlight: 'hr' },
+  { key: 'rbi_desc', label: '打点（多い順）', cmp: (a, b) => b._stats.rbis - a._stats.rbis, highlight: 'rbi' },
+  { key: 'mvp_desc', label: 'MVP回数（多い順）', cmp: (a, b) => b._mvp - a._mvp, highlight: 'mvp' },
+  { key: 'wins_desc', label: '勝（多い順）', cmp: (a, b) => b._stats.wins - a._stats.wins, highlight: 'wins' },
+  { key: 'pitchK_desc', label: '奪三振（多い順）', cmp: (a, b) => b._stats.pitchStrikeouts - a._stats.pitchStrikeouts, highlight: 'pitchK' },
+];
+
+let currentSortKey = localStorage.getItem('members_sort_key') || 'number_asc';
+
+function getCurrentSortOption() {
+  return SORT_OPTIONS.find((o) => o.key === currentSortKey) || SORT_OPTIONS[0];
+}
+
+function ensureSortControl() {
+  if (document.getElementById('member-sort')) return;
+  const container = document.querySelector('.app-main .action-bar');
+  if (!container) return;
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap';
+  wrap.innerHTML = `
+    <span style="font-size:.8rem;color:var(--color-text-muted)">並び替え:</span>
+    <select id="member-sort" class="field-select" style="flex:1;min-width:180px;max-width:240px;font-size:.85rem;padding:6px 8px">
+      ${SORT_OPTIONS.map((o) => `<option value="${o.key}" ${o.key === currentSortKey ? 'selected' : ''}>${o.label}</option>`).join('')}
+    </select>
+  `;
+  container.parentNode.insertBefore(wrap, container);
+  document.getElementById('member-sort').addEventListener('change', (e) => {
+    currentSortKey = e.target.value;
+    localStorage.setItem('members_sort_key', currentSortKey);
+    render();
   });
+}
+
+function render() {
+  ensureSortControl();
+  const list = document.getElementById('members-list');
+  const enriched = membersState.members.map((m) => {
+    const stats = aggregateStats(m.id);
+    const avg = stats.atBats > 0 ? stats.hits / stats.atBats : 0;
+    const mvp = gamesState.games.filter((g) => g.mvpId === m.id).length;
+    return { ...m, _stats: stats, _avg: avg, _mvp: mvp };
+  });
+  const sortOpt = getCurrentSortOption();
+  const members = [...enriched].sort(sortOpt.cmp);
+
   if (members.length === 0) {
     list.innerHTML = '<div class="empty">まだメンバーが登録されていません。<br>「＋ 新規登録」から登録してください。</div>';
     return;
   }
-  list.innerHTML = members.map((m) => renderMemberCard(m)).join('');
+  const showRank = sortOpt.highlight != null;
+  list.innerHTML = members.map((m, idx) => renderMemberCard(m, sortOpt.highlight, showRank ? idx + 1 : null)).join('');
   list.querySelectorAll('[data-detail]').forEach((btn) => {
     btn.addEventListener('click', () => openDetailDialog(btn.dataset.detail));
   });
@@ -144,20 +190,39 @@ function render() {
   });
 }
 
-function renderMemberCard(m) {
-  const mvpCount = gamesState.games.filter((g) => g.mvpId === m.id).length;
-  const stats = aggregateStats(m.id);
+function renderMemberCard(m, highlight, rank) {
+  const mvpCount = m._mvp;
+  const stats = m._stats;
   const avg = formatBattingAvg(stats.hits, stats.atBats);
   const summary = stats.plateAppearances > 0
     ? `打率${avg} (${stats.hits}/${stats.atBats}) ・ 本塁打${stats.homeRuns} ・ 打点${stats.rbis}`
     : '記録なし';
+
+  const highlightValueMap = {
+    avg, pa: stats.plateAppearances, ab: stats.atBats, hits: stats.hits,
+    hr: stats.homeRuns, rbi: stats.rbis, mvp: mvpCount,
+    wins: stats.wins, pitchK: stats.pitchStrikeouts,
+  };
+  const highlightLabelMap = {
+    avg: '打率', pa: '打席', ab: '打数', hits: '安打',
+    hr: '本塁打', rbi: '打点', mvp: 'MVP',
+    wins: '勝', pitchK: '奪三振',
+  };
+  const highlightValue = highlight != null ? highlightValueMap[highlight] : null;
+  const highlightLabel = highlight != null ? highlightLabelMap[highlight] : null;
+  const rankBadge = rank != null
+    ? `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:30px;height:30px;border-radius:50%;background:${rank <= 3 ? 'var(--color-accent)' : '#eef4fb'};color:${rank <= 3 ? '#fff' : 'var(--color-primary)'};font-weight:700;font-size:.85rem;flex-shrink:0">${rank}</span>`
+    : '';
+
   return `
     <div class="card" style="cursor:pointer" data-detail="${m.id}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        ${rankBadge}
         <div style="min-width:0;flex:1">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
             ${m.number != null ? `<span style="background:var(--color-primary);color:#fff;padding:2px 8px;border-radius:12px;font-size:.8rem;font-weight:600">#${m.number}</span>` : ''}
             <span class="card-title" style="margin:0">${escapeHtml(m.name)}</span>
+            ${highlight != null && highlightValue !== '' ? `<span style="margin-left:auto;background:var(--color-accent);color:#fff;padding:2px 10px;border-radius:12px;font-size:.85rem;font-weight:700">${highlightLabel} ${highlightValue}</span>` : ''}
           </div>
           <div class="card-meta">
             ${mvpCount > 0 ? `🏆 MVP ${mvpCount}回` : '—'}
