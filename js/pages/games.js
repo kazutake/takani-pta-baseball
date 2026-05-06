@@ -2,6 +2,16 @@ import { CONFIG } from '../config.js';
 import { fetchJSON, writeJSON, writeBinary, deleteFile, ConflictError } from '../api.js';
 import { renderHeader, renderNav, requireAuth, showToast, escapeHtml, formatDate, uid, todayISO } from '../app.js';
 import { processImage, blobToBase64 } from '../imageutil.js';
+import {
+  RESULT_TYPES,
+  isOut,
+  resultLabel,
+  resultShort,
+  computeNextInning,
+  outsInInning,
+  runsInInning,
+  deriveInningsFromPlays,
+} from '../plays.js';
 
 renderHeader();
 renderNav('games');
@@ -52,11 +62,25 @@ function render() {
   list.querySelectorAll('[data-stats]').forEach((btn) => {
     btn.addEventListener('click', () => openStatsDialog(btn.dataset.stats));
   });
+  list.querySelectorAll('[data-plays]').forEach((btn) => {
+    btn.addEventListener('click', () => openPlaysDialog(btn.dataset.plays));
+  });
 }
 
 function renderCardScoreboard(g) {
   const opponent = escapeHtml(g.opponent || '相手');
-  if (!g.innings || g.innings.length === 0) {
+  // 打席記録があれば自動で集計したイニングを使う
+  const derivedInnings = deriveInningsFromPlays(
+    g.ourPlays,
+    g.oppPlays,
+    !!g.isHome,
+    g.oursRunsAdj,
+    g.oppsRunsAdj,
+  );
+  const innings = derivedInnings && derivedInnings.length > 0
+    ? derivedInnings
+    : g.innings;
+  if (!innings || innings.length === 0) {
     return `
       <div class="score-line">
         <span>当チーム</span>
@@ -70,11 +94,11 @@ function renderCardScoreboard(g) {
   const isHome = !!g.isHome;
   const topName = isHome ? opponent : '当ﾁｰﾑ';
   const bottomName = isHome ? '当ﾁｰﾑ' : opponent;
-  const headerCells = g.innings.map((_, i) => `<th>${i + 1}</th>`).join('');
-  const topCells = g.innings.map((inn) => `<td>${inn.top ?? 0}</td>`).join('');
-  const bottomCells = g.innings.map((inn) => `<td>${inn.bottom ?? 0}</td>`).join('');
-  const totTop = g.innings.reduce((s, i) => s + (i.top || 0), 0);
-  const totBottom = g.innings.reduce((s, i) => s + (i.bottom || 0), 0);
+  const headerCells = innings.map((_, i) => `<th>${i + 1}</th>`).join('');
+  const topCells = innings.map((inn) => `<td>${inn.top ?? 0}</td>`).join('');
+  const bottomCells = innings.map((inn) => `<td>${inn.bottom ?? 0}</td>`).join('');
+  const totTop = innings.reduce((s, i) => s + (i.top || 0), 0);
+  const totBottom = innings.reduce((s, i) => s + (i.bottom || 0), 0);
   return `
     <div class="scoreboard-display">
       <table>
@@ -90,6 +114,7 @@ function renderCardScoreboard(g) {
           </tr>
         </tbody>
       </table>
+      ${derivedInnings ? '<div style="font-size:.7rem;color:var(--color-text-muted);text-align:right;margin-top:2px">📝 打席記録から自動計算</div>' : ''}
     </div>
   `;
 }
@@ -387,9 +412,14 @@ function renderGameCard(g) {
           `).join('')}
         </div>
       ` : ''}
-      <button class="btn btn-block btn-sm" data-stats="${g.id}" style="margin-top:10px">
-        📊 選手成績を入力${statsCount > 0 ? ` (${statsCount}名)` : ''}
-      </button>
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <button class="btn btn-sm" data-plays="${g.id}" style="flex:1">
+          📝 打席記録${(g.ourPlays || []).length > 0 ? ` (${(g.ourPlays || []).length}打席)` : ''}
+        </button>
+        <button class="btn btn-sm" data-stats="${g.id}" style="flex:1">
+          📊 手動成績${statsCount > 0 ? ` (${statsCount})` : ''}
+        </button>
+      </div>
     </div>
   `;
 }
@@ -683,6 +713,8 @@ function openDialog(g, isEdit) {
         highlights: fd.get('highlights').toString().trim(),
         photos: finalPhotos,
         playerStats: g.playerStats || {},
+        ourLineup: g.ourLineup || [],
+        ourPlays: g.ourPlays || [],
       };
 
       const next = { ...gamesState };
@@ -787,4 +819,315 @@ function openLightbox(photos, startIdx, game) {
     if (e.target === lb) close();
   });
   function close() { lb.remove(); }
+}
+
+// ========== 打席記録モーダル (Phase 1: 打順 + 我々の攻撃) ==========
+function openPlaysDialog(gameId) {
+  const game = gamesState.games.find((x) => x.id === gameId);
+  if (!game) return;
+  if (membersState.members.length === 0) {
+    showToast('先にメンバーを登録してください', 'error');
+    return;
+  }
+
+  // 編集中のローカルステート
+  let lineup = [...(game.ourLineup || [])];
+  let plays = (game.ourPlays || []).map((p) => ({ ...p }));
+  let activeTab = lineup.length === 0 ? 'lineup' : 'offense';
+  let pendingResult = null;
+  let pendingRBI = 0;
+  let manualInning = null; // null = 自動計算
+
+  const memberById = (id) => membersState.members.find((m) => m.id === id);
+
+  const html = `
+    <div class="modal-backdrop open" id="plays-modal">
+      <div class="modal plays-modal">
+        <h3 style="margin:0 0 4px">📝 打席記録</h3>
+        <div class="card-meta" style="margin-bottom:8px">
+          ${escapeHtml(formatDate(game.date))} vs ${escapeHtml(game.opponent || '')}
+        </div>
+        <div class="play-tabs">
+          <button type="button" class="play-tab" data-tab="lineup">打順</button>
+          <button type="button" class="play-tab" data-tab="offense">攻撃</button>
+        </div>
+        <div class="play-tab-content" id="tab-lineup"></div>
+        <div class="play-tab-content" id="tab-offense"></div>
+        <div class="modal-actions" style="margin-top:12px">
+          <button type="button" class="btn" id="plays-cancel">キャンセル</button>
+          <button type="button" class="btn btn-primary" id="plays-save">保存</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.insertAdjacentHTML('beforeend', html);
+
+  const modal = document.getElementById('plays-modal');
+
+  function setTab(tab) {
+    activeTab = tab;
+    modal.querySelectorAll('.play-tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === tab));
+    document.getElementById('tab-lineup').style.display = tab === 'lineup' ? 'block' : 'none';
+    document.getElementById('tab-offense').style.display = tab === 'offense' ? 'block' : 'none';
+  }
+  modal.querySelectorAll('.play-tab').forEach((t) => {
+    t.addEventListener('click', () => setTab(t.dataset.tab));
+  });
+
+  // ----- 打順タブ -----
+  function renderLineupTab() {
+    const lineupHtml = lineup.length === 0
+      ? '<div class="empty">打順未設定。下から選手を追加してください。</div>'
+      : lineup.map((memberId, i) => {
+        const m = memberById(memberId);
+        return `
+          <div class="lineup-row" data-pos="${i}">
+            <span class="lineup-pos">${i + 1}</span>
+            <span class="lineup-name">${m ? `${m.number != null ? `<span class="num-badge">#${m.number}</span> ` : ''}${escapeHtml(m.name)}` : '<span style="color:var(--color-danger)">削除済</span>'}</span>
+            <div class="lineup-actions">
+              <button type="button" class="lineup-icon-btn" data-up ${i === 0 ? 'disabled' : ''}>↑</button>
+              <button type="button" class="lineup-icon-btn" data-down ${i === lineup.length - 1 ? 'disabled' : ''}>↓</button>
+              <button type="button" class="lineup-icon-btn" data-remove>×</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+    const usedIds = new Set(lineup);
+    const available = membersState.members.filter((m) => !usedIds.has(m.id));
+    const sortedAvail = [...available].sort((a, b) => {
+      const na = a.number ?? 999, nb = b.number ?? 999;
+      if (na !== nb) return na - nb;
+      return (a.name || '').localeCompare(b.name || '', 'ja');
+    });
+
+    document.getElementById('tab-lineup').innerHTML = `
+      <p style="font-size:.8rem;color:var(--color-text-muted);margin:0 0 8px">
+        ↑↓で並び替え、×で削除。10人以上もOK。
+      </p>
+      <div class="lineup-list">${lineupHtml}</div>
+      ${sortedAvail.length > 0 ? `
+        <div style="margin-top:12px">
+          <h5 style="margin:0 0 6px;font-size:.85rem;color:var(--color-text-muted)">追加できるメンバー</h5>
+          <div class="member-pool">
+            ${sortedAvail.map((m) => `
+              <button type="button" class="member-pool-btn" data-add-member="${m.id}">
+                ${m.number != null ? `<span class="num-badge">#${m.number}</span> ` : ''}${escapeHtml(m.name)}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      ` : '<p style="font-size:.8rem;color:var(--color-text-muted);margin-top:8px">全員を打順に入れました。</p>'}
+    `;
+
+    document.querySelectorAll('[data-up]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const i = Number(btn.closest('.lineup-row').dataset.pos);
+        if (i > 0) {
+          [lineup[i - 1], lineup[i]] = [lineup[i], lineup[i - 1]];
+          renderLineupTab();
+        }
+      });
+    });
+    document.querySelectorAll('[data-down]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const i = Number(btn.closest('.lineup-row').dataset.pos);
+        if (i < lineup.length - 1) {
+          [lineup[i], lineup[i + 1]] = [lineup[i + 1], lineup[i]];
+          renderLineupTab();
+        }
+      });
+    });
+    document.querySelectorAll('[data-remove]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const i = Number(btn.closest('.lineup-row').dataset.pos);
+        const m = memberById(lineup[i]);
+        if (!confirm(`「${m ? m.name : '?'}」を打順から外しますか？\n（過去の打席記録は残ります）`)) return;
+        lineup.splice(i, 1);
+        renderLineupTab();
+      });
+    });
+    document.querySelectorAll('[data-add-member]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        lineup.push(btn.dataset.addMember);
+        renderLineupTab();
+      });
+    });
+  }
+
+  // ----- 攻撃タブ -----
+  function currentInning() {
+    return manualInning != null ? manualInning : computeNextInning(plays);
+  }
+  function currentBatterIdx() {
+    if (lineup.length === 0) return -1;
+    return plays.length % lineup.length;
+  }
+  function renderOffenseTab() {
+    if (lineup.length === 0) {
+      document.getElementById('tab-offense').innerHTML = `
+        <div class="empty">先に「打順」タブで打順を設定してください。</div>
+      `;
+      return;
+    }
+    const inning = currentInning();
+    const outs = outsInInning(plays, inning);
+    const inningRuns = runsInInning(plays, inning);
+    const batterIdx = currentBatterIdx();
+    const batterId = lineup[batterIdx];
+    const batter = memberById(batterId);
+
+    const resultButtons = RESULT_TYPES.map((r) => `
+      <button type="button" class="result-btn ${pendingResult === r.key ? 'active' : ''} ${isOut(r.key) ? 'is-out' : 'is-onbase'}" data-result="${r.key}">
+        ${r.label}
+      </button>
+    `).join('');
+
+    const recentPlays = [...plays].reverse().slice(0, 30);
+    const playsList = plays.length === 0
+      ? '<div class="card-meta" style="text-align:center;padding:12px">まだ打席が記録されていません</div>'
+      : recentPlays.map((p, idxRev) => {
+        const realIdx = plays.length - 1 - idxRev;
+        const m = memberById(p.batterId);
+        return `
+          <div class="play-row">
+            <span class="play-inning">${p.inning}回</span>
+            <span class="play-batter">${m ? (m.number != null ? `#${m.number} ` : '') + m.name : '?'}</span>
+            <span class="play-result">${resultLabel(p.result)}${p.rbi > 0 ? ` <strong>(${p.rbi}打点)</strong>` : ''}</span>
+            <button type="button" class="play-del-btn" data-play-del="${realIdx}" aria-label="削除">×</button>
+          </div>
+        `;
+      }).join('');
+
+    document.getElementById('tab-offense').innerHTML = `
+      <div class="play-state">
+        <div class="play-state-row">
+          <span class="play-state-label">${inning}回</span>
+          <span class="play-state-out">アウト ${outs}/3</span>
+          <span class="play-state-runs">この回 ${inningRuns}点</span>
+        </div>
+        <div class="play-state-row" style="margin-top:6px">
+          <button type="button" class="btn btn-sm" id="prev-inning">前の回</button>
+          <button type="button" class="btn btn-sm" id="next-inning">次の回</button>
+          ${manualInning != null ? '<span style="font-size:.7rem;color:var(--color-warning);margin-left:8px">手動指定中</span>' : ''}
+        </div>
+      </div>
+      <div class="batter-info">
+        <span style="font-size:.8rem;color:var(--color-text-muted)">打者</span>
+        <strong>${batterIdx + 1}番: ${batter ? (batter.number != null ? `<span class="num-badge">#${batter.number}</span> ` : '') + escapeHtml(batter.name) : '?'}</strong>
+      </div>
+      <div class="result-grid">${resultButtons}</div>
+      <div class="rbi-controls">
+        <span class="stat-label">打点</span>
+        <div class="stat-controls">
+          <button type="button" class="stat-btn" id="rbi-dec">−</button>
+          <span class="stat-value" id="rbi-display">${pendingRBI}</span>
+          <button type="button" class="stat-btn stat-btn-plus" id="rbi-inc">+</button>
+        </div>
+      </div>
+      <button type="button" class="btn btn-primary btn-block" id="confirm-pa" ${!pendingResult ? 'disabled' : ''}>
+        この打席を記録 ▶
+      </button>
+
+      <h5 style="margin:18px 0 6px;font-size:.85rem;color:var(--color-text-muted)">記録済みの打席 (${plays.length})</h5>
+      <div class="plays-list">${playsList}</div>
+    `;
+
+    // wire up
+    document.querySelectorAll('.result-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const r = btn.dataset.result;
+        pendingResult = pendingResult === r ? null : r;
+        renderOffenseTab();
+      });
+    });
+    document.getElementById('rbi-dec').addEventListener('click', () => {
+      pendingRBI = Math.max(0, pendingRBI - 1);
+      document.getElementById('rbi-display').textContent = pendingRBI;
+    });
+    document.getElementById('rbi-inc').addEventListener('click', () => {
+      pendingRBI = Math.min(4, pendingRBI + 1);
+      document.getElementById('rbi-display').textContent = pendingRBI;
+    });
+    document.getElementById('confirm-pa').addEventListener('click', () => {
+      if (!pendingResult) return;
+      plays.push({
+        inning: currentInning(),
+        batterId,
+        result: pendingResult,
+        rbi: pendingRBI,
+      });
+      pendingResult = null;
+      pendingRBI = 0;
+      manualInning = null; // 確定後は自動計算に戻す
+      renderOffenseTab();
+    });
+    document.getElementById('prev-inning').addEventListener('click', () => {
+      const cur = currentInning();
+      if (cur > 1) manualInning = cur - 1;
+      renderOffenseTab();
+    });
+    document.getElementById('next-inning').addEventListener('click', () => {
+      manualInning = currentInning() + 1;
+      renderOffenseTab();
+    });
+    document.querySelectorAll('[data-play-del]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const idx = Number(btn.dataset.playDel);
+        const p = plays[idx];
+        const m = memberById(p.batterId);
+        if (!confirm(`${p.inning}回 ${m ? m.name : '?'} の打席を削除しますか？`)) return;
+        plays.splice(idx, 1);
+        renderOffenseTab();
+      });
+    });
+  }
+
+  setTab(activeTab);
+  renderLineupTab();
+  renderOffenseTab();
+
+  document.getElementById('plays-cancel').addEventListener('click', () => modal.remove());
+  document.getElementById('plays-save').addEventListener('click', async () => {
+    const saveBtn = document.getElementById('plays-save');
+    saveBtn.disabled = true;
+    saveBtn.textContent = '保存中...';
+    try {
+      // ourScore/theirScore を再計算（打席があれば）
+      let updatedGame = {
+        ...game,
+        ourLineup: lineup,
+        ourPlays: plays,
+      };
+      if (plays.length > 0) {
+        const isHome = !!game.isHome;
+        let ourTotal = 0;
+        for (const p of plays) ourTotal += (p.rbi || 0);
+        // 相手の得点は既存のまま（Phase 2 で oppPlays から計算）
+        updatedGame.ourScore = ourTotal;
+        const theirScore = updatedGame.theirScore || 0;
+        updatedGame.result = ourTotal > theirScore ? 'win' : ourTotal < theirScore ? 'lose' : 'draw';
+        // innings はフィールドとしてはそのまま残す（手動入力分を保持）
+      }
+      const next = {
+        ...gamesState,
+        games: gamesState.games.map((x) => (x.id === game.id ? updatedGame : x)),
+      };
+      gamesSha = await writeJSON(
+        CONFIG.DATA_PATHS.games,
+        next,
+        gamesSha,
+        `update plays for game ${game.date} vs ${game.opponent}`,
+      );
+      gamesState = next;
+      modal.remove();
+      render();
+      showToast('打席記録を保存しました', 'success');
+    } catch (err) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = '保存';
+      if (err instanceof ConflictError) showToast(err.message, 'error');
+      else showToast('保存に失敗しました: ' + err.message, 'error');
+    }
+  });
 }

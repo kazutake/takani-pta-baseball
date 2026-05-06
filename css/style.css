@@ -787,6 +787,246 @@ table.scoreboard tr.us-row td:first-child {
 .dec-btn.active-loss { background: var(--color-danger); color: #fff; border-color: var(--color-danger); }
 .dec-btn.active-none { background: var(--color-text-muted); color: #fff; border-color: var(--color-text-muted); }
 
+/* ========== Plays Modal (打席記録) ========== */
+.plays-modal {
+  max-width: 560px;
+  width: 100%;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+}
+.play-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+.play-tab {
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  border-bottom: 2px solid transparent;
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+}
+.play-tab.active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  font-weight: 600;
+}
+.play-tab-content {
+  flex: 1;
+  overflow: auto;
+}
+
+/* 打順リスト */
+.lineup-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.lineup-row {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+.lineup-pos {
+  font-weight: 700;
+  color: var(--color-primary);
+  font-size: 1rem;
+  text-align: center;
+  background: #eef4fb;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lineup-name {
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.num-badge {
+  background: var(--color-primary);
+  color: #fff;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.lineup-actions {
+  display: flex;
+  gap: 4px;
+}
+.lineup-icon-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.lineup-icon-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.member-pool {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.member-pool-btn {
+  padding: 6px 10px;
+  border-radius: 16px;
+  border: 1px dashed var(--color-border);
+  background: var(--color-surface);
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.member-pool-btn:hover {
+  background: #eef4fb;
+  border-color: var(--color-primary);
+}
+
+/* 攻撃タブ */
+.play-state {
+  background: #eef4fb;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+.play-state-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.play-state-label {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+.play-state-out {
+  font-size: 0.9rem;
+  color: var(--color-warning);
+  font-weight: 600;
+}
+.play-state-runs {
+  font-size: 0.9rem;
+  color: var(--color-success);
+  font-weight: 600;
+}
+.batter-info {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.batter-info strong {
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.result-btn {
+  padding: 12px 4px;
+  border-radius: 8px;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.result-btn:active { transform: scale(0.96); }
+.result-btn.is-out {
+  color: var(--color-text-muted);
+}
+.result-btn.is-onbase {
+  color: var(--color-primary);
+}
+.result-btn.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+.result-btn.active.is-out {
+  background: var(--color-text-muted);
+  border-color: var(--color-text-muted);
+}
+.rbi-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #fafbfc;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+.plays-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.play-row {
+  display: grid;
+  grid-template-columns: 36px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: #fafbfc;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+.play-inning {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+.play-result {
+  color: var(--color-text);
+  font-size: 0.85rem;
+}
+.play-del-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 0;
+}
+.play-del-btn:hover { background: var(--color-danger); color: #fff; border-color: var(--color-danger); }
+
 /* ========== Top-page Slideshow ========== */
 .slideshow {
   position: relative;

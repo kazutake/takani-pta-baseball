@@ -1,6 +1,7 @@
 import { CONFIG } from '../config.js';
 import { fetchJSON, writeJSON, ConflictError } from '../api.js';
 import { renderHeader, renderNav, requireAuth, showToast, escapeHtml, uid } from '../app.js';
+import { aggregateBattingFromPlays } from '../plays.js';
 
 renderHeader();
 renderNav('members');
@@ -30,28 +31,47 @@ const PITCHING_KEYS = ['strikeouts', 'walks', 'hitBatters', 'errors', 'hitsAllow
 
 function aggregateStats(memberId) {
   const r = {
-    plateAppearances: 0, hits: 0,
+    plateAppearances: 0, atBats: 0, hits: 0,
     singles: 0, doubles: 0, triples: 0, homeRuns: 0,
+    walksBatter: 0, hbpBatter: 0,
     rbis: 0, strikeouts: 0, flyOuts: 0, groundOuts: 0, reachedOnError: 0,
     pitchGames: 0, wins: 0, losses: 0,
     pitchStrikeouts: 0, walks: 0, hitBatters: 0, errors: 0, hitsAllowed: 0,
   };
   for (const game of gamesState.games) {
-    const ps = game.playerStats && game.playerStats[memberId];
-    if (!ps) continue;
-    if (ps.batting) {
-      const b = ps.batting;
-      r.singles += b.singles || 0;
-      r.doubles += b.doubles || 0;
-      r.triples += b.triples || 0;
-      r.homeRuns += b.homeRuns || 0;
-      r.rbis += b.rbis || 0;
-      r.strikeouts += b.strikeouts || 0;
-      r.flyOuts += b.flyOuts || 0;
-      r.groundOuts += b.groundOuts || 0;
-      r.reachedOnError += b.reachedOnError || 0;
+    // 打席記録 (ourPlays) を最優先で集計
+    if (game.ourPlays && game.ourPlays.length > 0) {
+      const playStats = aggregateBattingFromPlays(memberId, game.ourPlays);
+      r.singles += playStats.singles;
+      r.doubles += playStats.doubles;
+      r.triples += playStats.triples;
+      r.homeRuns += playStats.homeRuns;
+      r.walksBatter += playStats.walks;
+      r.hbpBatter += playStats.hbp;
+      r.strikeouts += playStats.strikeouts;
+      r.flyOuts += playStats.flyOuts;
+      r.groundOuts += playStats.groundOuts;
+      r.reachedOnError += playStats.reachedOnError;
+      r.rbis += playStats.rbis;
+    } else {
+      // 旧方式 (playerStats) を集計
+      const ps = game.playerStats && game.playerStats[memberId];
+      if (ps && ps.batting) {
+        const b = ps.batting;
+        r.singles += b.singles || 0;
+        r.doubles += b.doubles || 0;
+        r.triples += b.triples || 0;
+        r.homeRuns += b.homeRuns || 0;
+        r.rbis += b.rbis || 0;
+        r.strikeouts += b.strikeouts || 0;
+        r.flyOuts += b.flyOuts || 0;
+        r.groundOuts += b.groundOuts || 0;
+        r.reachedOnError += b.reachedOnError || 0;
+      }
     }
-    if (ps.pitching) {
+    // 投手成績 (Phase 1 では旧方式のみ。Phase 2 で oppPlays から自動集計)
+    const ps = game.playerStats && game.playerStats[memberId];
+    if (ps && ps.pitching) {
       const p = ps.pitching;
       const hasPitching = !!p.decision || PITCHING_KEYS.some((k) => (p[k] || 0) > 0);
       if (hasPitching) r.pitchGames++;
@@ -65,7 +85,8 @@ function aggregateStats(memberId) {
     }
   }
   r.hits = r.singles + r.doubles + r.triples + r.homeRuns;
-  r.plateAppearances = r.hits + r.strikeouts + r.flyOuts + r.groundOuts + r.reachedOnError;
+  r.plateAppearances = r.hits + r.walksBatter + r.hbpBatter + r.strikeouts + r.flyOuts + r.groundOuts + r.reachedOnError;
+  r.atBats = r.plateAppearances - r.walksBatter - r.hbpBatter;
   return r;
 }
 
@@ -107,9 +128,9 @@ function render() {
 function renderMemberCard(m) {
   const mvpCount = gamesState.games.filter((g) => g.mvpId === m.id).length;
   const stats = aggregateStats(m.id);
-  const avg = formatBattingAvg(stats.hits, stats.plateAppearances);
+  const avg = formatBattingAvg(stats.hits, stats.atBats);
   const summary = stats.plateAppearances > 0
-    ? `打率${avg} (${stats.hits}/${stats.plateAppearances}) ・ 本塁打${stats.homeRuns} ・ 打点${stats.rbis}`
+    ? `打率${avg} (${stats.hits}/${stats.atBats}) ・ 本塁打${stats.homeRuns} ・ 打点${stats.rbis}`
     : '記録なし';
   return `
     <div class="card" style="cursor:pointer" data-detail="${m.id}">
@@ -144,7 +165,7 @@ function openDetailDialog(id) {
     .filter((g) => g.playerStats && g.playerStats[id])
     .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   const s = aggregateStats(m.id);
-  const avg = formatBattingAvg(s.hits, s.plateAppearances);
+  const avg = formatBattingAvg(s.hits, s.atBats);
 
   const html = `
     <div class="modal-backdrop open" id="detail-modal" role="dialog" aria-modal="true">
@@ -159,11 +180,12 @@ function openDetailDialog(id) {
         ${s.plateAppearances === 0 ? `<div class="card-meta">まだ記録がありません</div>` : `
         <table class="stats-table">
           <tr><td>打率</td><td>${avg}</td><td>打席</td><td>${s.plateAppearances}</td></tr>
-          <tr><td>安打</td><td>${s.hits}</td><td>打点</td><td>${s.rbis}</td></tr>
-          <tr><td>本塁打</td><td>${s.homeRuns}</td><td>三塁打</td><td>${s.triples}</td></tr>
-          <tr><td>二塁打</td><td>${s.doubles}</td><td>単打</td><td>${s.singles}</td></tr>
-          <tr><td>三振</td><td>${s.strikeouts}</td><td>失策出塁</td><td>${s.reachedOnError}</td></tr>
-          <tr><td>フライアウト</td><td>${s.flyOuts}</td><td>ゴロアウト</td><td>${s.groundOuts}</td></tr>
+          <tr><td>打数</td><td>${s.atBats}</td><td>安打</td><td>${s.hits}</td></tr>
+          <tr><td>打点</td><td>${s.rbis}</td><td>本塁打</td><td>${s.homeRuns}</td></tr>
+          <tr><td>三塁打</td><td>${s.triples}</td><td>二塁打</td><td>${s.doubles}</td></tr>
+          <tr><td>単打</td><td>${s.singles}</td><td>失策出塁</td><td>${s.reachedOnError}</td></tr>
+          <tr><td>四球</td><td>${s.walksBatter}</td><td>死球</td><td>${s.hbpBatter}</td></tr>
+          <tr><td>三振</td><td>${s.strikeouts}</td><td>飛/ゴロ</td><td>${s.flyOuts}/${s.groundOuts}</td></tr>
         </table>
         `}
 
