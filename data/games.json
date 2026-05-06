@@ -1,3 +1,50 @@
 {
-  "games": []
+  "games": [
+    {
+      "id": "g_motkldccclq6",
+      "date": "2026-05-10",
+      "opponent": "桃一",
+      "ourScore": 0,
+      "theirScore": 0,
+      "result": "draw",
+      "isHome": false,
+      "innings": [
+        {
+          "top": 0,
+          "bottom": 0
+        },
+        {
+          "top": 0,
+          "bottom": 0
+        },
+        {
+          "top": 0,
+          "bottom": 0
+        },
+        {
+          "top": 0,
+          "bottom": 0
+        },
+        {
+          "top": 0,
+          "bottom": 0
+        },
+        {
+          "top": 0,
+          "bottom": 0
+        },
+        {
+          "top": 0,
+          "bottom": 0
+        }
+      ],
+      "location": "",
+      "mvpId": null,
+      "highlights": "",
+      "photos": [],
+      "playerStats": {},
+      "ourLineup": [],
+      "ourPlays": []
+    }
+  ]
 }
