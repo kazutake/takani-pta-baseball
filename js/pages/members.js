@@ -26,6 +26,55 @@ async function loadGames() {
   gamesState = data || { games: [] };
 }
 
+const PITCHING_KEYS = ['strikeouts', 'walks', 'hitBatters', 'errors', 'hitsAllowed'];
+
+function aggregateStats(memberId) {
+  const r = {
+    plateAppearances: 0, hits: 0,
+    singles: 0, doubles: 0, triples: 0, homeRuns: 0,
+    rbis: 0, strikeouts: 0, flyOuts: 0, groundOuts: 0, reachedOnError: 0,
+    pitchGames: 0, wins: 0, losses: 0,
+    pitchStrikeouts: 0, walks: 0, hitBatters: 0, errors: 0, hitsAllowed: 0,
+  };
+  for (const game of gamesState.games) {
+    const ps = game.playerStats && game.playerStats[memberId];
+    if (!ps) continue;
+    if (ps.batting) {
+      const b = ps.batting;
+      r.singles += b.singles || 0;
+      r.doubles += b.doubles || 0;
+      r.triples += b.triples || 0;
+      r.homeRuns += b.homeRuns || 0;
+      r.rbis += b.rbis || 0;
+      r.strikeouts += b.strikeouts || 0;
+      r.flyOuts += b.flyOuts || 0;
+      r.groundOuts += b.groundOuts || 0;
+      r.reachedOnError += b.reachedOnError || 0;
+    }
+    if (ps.pitching) {
+      const p = ps.pitching;
+      const hasPitching = !!p.decision || PITCHING_KEYS.some((k) => (p[k] || 0) > 0);
+      if (hasPitching) r.pitchGames++;
+      if (p.decision === 'win') r.wins++;
+      if (p.decision === 'loss') r.losses++;
+      r.pitchStrikeouts += p.strikeouts || 0;
+      r.walks += p.walks || 0;
+      r.hitBatters += p.hitBatters || 0;
+      r.errors += p.errors || 0;
+      r.hitsAllowed += p.hitsAllowed || 0;
+    }
+  }
+  r.hits = r.singles + r.doubles + r.triples + r.homeRuns;
+  r.plateAppearances = r.hits + r.strikeouts + r.flyOuts + r.groundOuts + r.reachedOnError;
+  return r;
+}
+
+function formatBattingAvg(hits, pa) {
+  if (pa === 0) return '.---';
+  const avg = hits / pa;
+  return avg.toFixed(3).replace(/^0+/, '');
+}
+
 function render() {
   const list = document.getElementById('members-list');
   const members = [...membersState.members].sort((a, b) => {
@@ -57,10 +106,15 @@ function render() {
 
 function renderMemberCard(m) {
   const mvpCount = gamesState.games.filter((g) => g.mvpId === m.id).length;
+  const stats = aggregateStats(m.id);
+  const avg = formatBattingAvg(stats.hits, stats.plateAppearances);
+  const summary = stats.plateAppearances > 0
+    ? `打率${avg} (${stats.hits}/${stats.plateAppearances}) ・ 本塁打${stats.homeRuns} ・ 打点${stats.rbis}`
+    : '記録なし';
   return `
     <div class="card" style="cursor:pointer" data-detail="${m.id}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-        <div>
+        <div style="min-width:0;flex:1">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
             ${m.number != null ? `<span style="background:var(--color-primary);color:#fff;padding:2px 8px;border-radius:12px;font-size:.8rem;font-weight:600">#${m.number}</span>` : ''}
             <span class="card-title" style="margin:0">${escapeHtml(m.name)}</span>
@@ -69,6 +123,7 @@ function renderMemberCard(m) {
             ${m.position ? escapeHtml(m.position) : '—'}
             ${mvpCount > 0 ? ` ・ 🏆 MVP ${mvpCount}回` : ''}
           </div>
+          <div class="card-meta" style="margin-top:4px">${summary}</div>
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0">
           <button class="btn btn-sm" data-edit="${m.id}">編集</button>
@@ -82,32 +137,57 @@ function renderMemberCard(m) {
 function openDetailDialog(id) {
   const m = membersState.members.find((x) => x.id === id);
   if (!m) return;
-  const myGames = gamesState.games
+  const myMvpGames = gamesState.games
     .filter((g) => g.mvpId === id)
     .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-  const stats = m.stats || {};
+  const myStatGames = gamesState.games
+    .filter((g) => g.playerStats && g.playerStats[id])
+    .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+  const s = aggregateStats(m.id);
+  const avg = formatBattingAvg(s.hits, s.plateAppearances);
+
   const html = `
     <div class="modal-backdrop open" id="detail-modal" role="dialog" aria-modal="true">
-      <div class="modal">
+      <div class="modal" style="max-width:520px">
         <h3>${m.number != null ? `#${m.number} ` : ''}${escapeHtml(m.name)}</h3>
         <div class="card-meta" style="margin-bottom:12px">
           ${m.position ? `ポジション: ${escapeHtml(m.position)}` : ''}
           ${m.joinedDate ? ` ・ 入部: ${escapeHtml(m.joinedDate)}` : ''}
         </div>
 
-        <h4 style="margin:16px 0 8px;font-size:.95rem">通算成績</h4>
+        <h4 style="margin:16px 0 8px;font-size:.95rem;color:var(--color-primary)">打撃成績 <span style="color:var(--color-text-muted);font-weight:normal;font-size:.8rem">（試合記録から自動集計）</span></h4>
+        ${s.plateAppearances === 0 ? `<div class="card-meta">まだ記録がありません</div>` : `
         <table class="stats-table">
-          <tr><td>打席</td><td>${stats.atBats ?? 0}</td><td>安打</td><td>${stats.hits ?? 0}</td></tr>
-          <tr><td>本塁打</td><td>${stats.homeRuns ?? 0}</td><td>打点</td><td>${stats.rbis ?? 0}</td></tr>
-          <tr><td>勝</td><td>${stats.wins ?? 0}</td><td>敗</td><td>${stats.losses ?? 0}</td></tr>
+          <tr><td>打率</td><td>${avg}</td><td>打席</td><td>${s.plateAppearances}</td></tr>
+          <tr><td>安打</td><td>${s.hits}</td><td>打点</td><td>${s.rbis}</td></tr>
+          <tr><td>本塁打</td><td>${s.homeRuns}</td><td>三塁打</td><td>${s.triples}</td></tr>
+          <tr><td>二塁打</td><td>${s.doubles}</td><td>単打</td><td>${s.singles}</td></tr>
+          <tr><td>三振</td><td>${s.strikeouts}</td><td>失策出塁</td><td>${s.reachedOnError}</td></tr>
+          <tr><td>フライアウト</td><td>${s.flyOuts}</td><td>ゴロアウト</td><td>${s.groundOuts}</td></tr>
         </table>
+        `}
 
-        <h4 style="margin:16px 0 8px;font-size:.95rem">MVP獲得試合 (${myGames.length}試合)</h4>
-        ${myGames.length === 0
+        ${s.pitchGames > 0 ? `
+        <h4 style="margin:16px 0 8px;font-size:.95rem;color:var(--color-primary)">投手成績</h4>
+        <table class="stats-table">
+          <tr><td>登板</td><td>${s.pitchGames}</td><td>勝-敗</td><td>${s.wins}-${s.losses}</td></tr>
+          <tr><td>奪三振</td><td>${s.pitchStrikeouts}</td><td>被安打</td><td>${s.hitsAllowed}</td></tr>
+          <tr><td>四球</td><td>${s.walks}</td><td>死球</td><td>${s.hitBatters}</td></tr>
+          <tr><td>エラー</td><td>${s.errors}</td><td></td><td></td></tr>
+        </table>
+        ` : ''}
+
+        <h4 style="margin:16px 0 8px;font-size:.95rem;color:var(--color-primary)">MVP獲得試合 (${myMvpGames.length})</h4>
+        ${myMvpGames.length === 0
           ? '<div class="card-meta">まだありません</div>'
-          : myGames.map(g => `<div class="card-meta">・ ${escapeHtml(g.date)} vs ${escapeHtml(g.opponent)}</div>`).join('')}
+          : myMvpGames.map(g => `<div class="card-meta">・ ${escapeHtml(g.date)} vs ${escapeHtml(g.opponent)}</div>`).join('')}
 
-        ${m.notes ? `<h4 style="margin:16px 0 8px;font-size:.95rem">メモ</h4><p style="margin:0;white-space:pre-wrap;font-size:.9rem">${escapeHtml(m.notes)}</p>` : ''}
+        ${myStatGames.length > 0 ? `
+        <h4 style="margin:16px 0 8px;font-size:.95rem;color:var(--color-primary)">出場記録 (${myStatGames.length}試合)</h4>
+        ${myStatGames.map(g => `<div class="card-meta">・ ${escapeHtml(g.date)} vs ${escapeHtml(g.opponent)}</div>`).join('')}
+        ` : ''}
+
+        ${m.notes ? `<h4 style="margin:16px 0 8px;font-size:.95rem;color:var(--color-primary)">メモ</h4><p style="margin:0;white-space:pre-wrap;font-size:.9rem">${escapeHtml(m.notes)}</p>` : ''}
 
         <div class="modal-actions">
           <button type="button" class="btn btn-block" id="detail-close">閉じる</button>
@@ -128,7 +208,6 @@ function openAddDialog() {
     number: '',
     position: '',
     joinedDate: '',
-    stats: { atBats: 0, hits: 0, homeRuns: 0, rbis: 0, wins: 0, losses: 0 },
     notes: '',
   }, false);
 }
@@ -136,7 +215,7 @@ function openAddDialog() {
 function openEditDialog(id) {
   const m = membersState.members.find((x) => x.id === id);
   if (!m) return;
-  openDialog({ ...m, stats: { ...(m.stats || {}) } }, true);
+  openDialog({ ...m }, true);
 }
 
 function openDialog(m, isEdit) {
@@ -166,44 +245,13 @@ function openDialog(m, isEdit) {
             <label class="field-label">入部日</label>
             <input class="field-input" type="date" name="joinedDate" value="${m.joinedDate || ''}" />
           </div>
-
-          <h4 style="margin:16px 0 8px;font-size:.9rem">通算成績</h4>
-          <div class="field-row">
-            <div class="field">
-              <label class="field-label">打席</label>
-              <input class="field-input" type="number" name="atBats" value="${m.stats.atBats ?? 0}" min="0" />
-            </div>
-            <div class="field">
-              <label class="field-label">安打</label>
-              <input class="field-input" type="number" name="hits" value="${m.stats.hits ?? 0}" min="0" />
-            </div>
-          </div>
-          <div class="field-row">
-            <div class="field">
-              <label class="field-label">本塁打</label>
-              <input class="field-input" type="number" name="homeRuns" value="${m.stats.homeRuns ?? 0}" min="0" />
-            </div>
-            <div class="field">
-              <label class="field-label">打点</label>
-              <input class="field-input" type="number" name="rbis" value="${m.stats.rbis ?? 0}" min="0" />
-            </div>
-          </div>
-          <div class="field-row">
-            <div class="field">
-              <label class="field-label">勝</label>
-              <input class="field-input" type="number" name="wins" value="${m.stats.wins ?? 0}" min="0" />
-            </div>
-            <div class="field">
-              <label class="field-label">敗</label>
-              <input class="field-input" type="number" name="losses" value="${m.stats.losses ?? 0}" min="0" />
-            </div>
-          </div>
-
           <div class="field">
             <label class="field-label">メモ</label>
             <textarea class="field-textarea" name="notes">${escapeHtml(m.notes || '')}</textarea>
           </div>
-
+          <p style="font-size:.8rem;color:var(--color-text-muted);margin:0 0 12px">
+            ※ 通算成績は試合ごとの「📊 選手成績」から自動で集計されます。
+          </p>
           <div class="modal-actions">
             <button type="button" class="btn" id="member-cancel">キャンセル</button>
             <button type="submit" class="btn btn-primary" id="member-submit">${isEdit ? '更新' : '登録'}</button>
@@ -229,14 +277,6 @@ function openDialog(m, isEdit) {
       number: numberRaw === '' ? null : Number(numberRaw),
       position: fd.get('position').toString(),
       joinedDate: fd.get('joinedDate').toString(),
-      stats: {
-        atBats: Number(fd.get('atBats') || 0),
-        hits: Number(fd.get('hits') || 0),
-        homeRuns: Number(fd.get('homeRuns') || 0),
-        rbis: Number(fd.get('rbis') || 0),
-        wins: Number(fd.get('wins') || 0),
-        losses: Number(fd.get('losses') || 0),
-      },
       notes: fd.get('notes').toString().trim(),
     };
 
