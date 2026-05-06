@@ -1,6 +1,10 @@
 // 打席結果の定義と集計ヘルパー
 // Phase 1: 我々の攻撃側のみ。守備（相手の攻撃）/ 投手 / 補正 は後続フェーズ。
 
+// 4列グリッドで3行に綺麗に並ぶ順序:
+// 1行目: ヒット系 (4種)
+// 2行目: 出塁系 (四球/死球/エラー/他セーフ)
+// 3行目: アウト系 (三振/フライ/ゴロ/他アウト)
 export const RESULT_TYPES = [
   { key: 'single', label: 'ヒット', short: '安' },
   { key: 'double', label: '二塁打', short: '二' },
@@ -8,13 +12,15 @@ export const RESULT_TYPES = [
   { key: 'homeRun', label: '本塁打', short: '本' },
   { key: 'walk', label: '四球', short: '四' },
   { key: 'hbp', label: '死球', short: '死' },
+  { key: 'reachedOnError', label: 'エラー', short: '失' },
+  { key: 'otherSafe', label: '他セーフ', short: '他S' },
   { key: 'strikeout', label: '三振', short: 'K' },
   { key: 'flyOut', label: 'フライ', short: '飛' },
   { key: 'groundOut', label: 'ゴロ', short: 'ゴ' },
-  { key: 'reachedOnError', label: 'エラー', short: '失' },
+  { key: 'otherOut', label: '他アウト', short: '他O' },
 ];
 
-export const OUT_RESULTS = ['strikeout', 'flyOut', 'groundOut'];
+export const OUT_RESULTS = ['strikeout', 'flyOut', 'groundOut', 'otherOut'];
 export const HIT_RESULTS = ['single', 'double', 'triple', 'homeRun'];
 export const ON_BASE_NO_AB_RESULTS = ['walk', 'hbp']; // 打数に含めない
 
@@ -84,6 +90,7 @@ export function aggregateBattingFromPlays(memberId, plays) {
     singles: 0, doubles: 0, triples: 0, homeRuns: 0,
     walks: 0, hbp: 0,
     strikeouts: 0, flyOuts: 0, groundOuts: 0, reachedOnError: 0,
+    otherOuts: 0, otherSafes: 0,
     rbis: 0,
     pa: 0,  // 打席数
     ab: 0,  // 打数 (PA - 四球 - 死球)
@@ -102,6 +109,8 @@ export function aggregateBattingFromPlays(memberId, plays) {
     else if (p.result === 'flyOut') r.flyOuts++;
     else if (p.result === 'groundOut') r.groundOuts++;
     else if (p.result === 'reachedOnError') r.reachedOnError++;
+    else if (p.result === 'otherOut') r.otherOuts++;
+    else if (p.result === 'otherSafe') r.otherSafes++;
     r.rbis += p.rbi || 0;
   }
   r.hits = r.singles + r.doubles + r.triples + r.homeRuns;

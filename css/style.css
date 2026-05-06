@@ -1056,6 +1056,9 @@ table.scoreboard tr.us-row td:first-child {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   min-height: 42px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .result-btn:active { transform: scale(0.96); }
 .result-btn.is-out {

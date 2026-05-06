@@ -35,6 +35,7 @@ function aggregateStats(memberId) {
     singles: 0, doubles: 0, triples: 0, homeRuns: 0,
     walksBatter: 0, hbpBatter: 0,
     rbis: 0, strikeouts: 0, flyOuts: 0, groundOuts: 0, reachedOnError: 0,
+    otherOuts: 0, otherSafes: 0,
     pitchGames: 0, wins: 0, losses: 0,
     pitchStrikeouts: 0, walks: 0, hitBatters: 0, errors: 0, hitsAllowed: 0,
   };
@@ -52,6 +53,8 @@ function aggregateStats(memberId) {
       r.flyOuts += playStats.flyOuts;
       r.groundOuts += playStats.groundOuts;
       r.reachedOnError += playStats.reachedOnError;
+      r.otherOuts += playStats.otherOuts;
+      r.otherSafes += playStats.otherSafes;
       r.rbis += playStats.rbis;
     } else {
       // 旧方式 (playerStats) を集計
@@ -81,6 +84,7 @@ function aggregateStats(memberId) {
           else if (p.result === 'hbp') r.hitBatters++;
           else if (HIT_RESULTS.includes(p.result)) r.hitsAllowed++;
           else if (p.result === 'reachedOnError') r.errors++;
+          // otherOut/otherSafe は特別なカウントなし（投球結果としてはニュートラル）
           r.runsAllowed = (r.runsAllowed || 0) + (p.rbi || 0);
         }
       }
@@ -104,7 +108,7 @@ function aggregateStats(memberId) {
   }
   if (r.runsAllowed === undefined) r.runsAllowed = 0;
   r.hits = r.singles + r.doubles + r.triples + r.homeRuns;
-  r.plateAppearances = r.hits + r.walksBatter + r.hbpBatter + r.strikeouts + r.flyOuts + r.groundOuts + r.reachedOnError;
+  r.plateAppearances = r.hits + r.walksBatter + r.hbpBatter + r.strikeouts + r.flyOuts + r.groundOuts + r.reachedOnError + r.otherOuts + r.otherSafes;
   r.atBats = r.plateAppearances - r.walksBatter - r.hbpBatter;
   return r;
 }
@@ -265,6 +269,7 @@ function openDetailDialog(id) {
           <tr><td>単打</td><td>${s.singles}</td><td>失策出塁</td><td>${s.reachedOnError}</td></tr>
           <tr><td>四球</td><td>${s.walksBatter}</td><td>死球</td><td>${s.hbpBatter}</td></tr>
           <tr><td>三振</td><td>${s.strikeouts}</td><td>飛/ゴロ</td><td>${s.flyOuts}/${s.groundOuts}</td></tr>
+          <tr><td>他セーフ</td><td>${s.otherSafes}</td><td>他アウト</td><td>${s.otherOuts}</td></tr>
         </table>
         `}
 
