@@ -4,7 +4,7 @@
       "id": "g_motowgfpbpio",
       "date": "2026-05-10",
       "opponent": "桃一",
-      "ourScore": 2,
+      "ourScore": 1,
       "theirScore": 0,
       "isHome": false,
       "innings": [],
@@ -185,18 +185,6 @@
           "batterId": "m_motkv4fnrkmz",
           "result": "walk",
           "rbi": 0
-        },
-        {
-          "inning": 7,
-          "batterId": "m_motkvjfh8tbi",
-          "result": "groundOut",
-          "rbi": 0
-        },
-        {
-          "inning": 7,
-          "batterId": "m_motkyugdfake",
-          "result": "otherOut",
-          "rbi": 1
         }
       ],
       "oppPlays": [
