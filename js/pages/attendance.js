@@ -2,6 +2,12 @@ import { CONFIG } from '../config.js';
 import { fetchJSON, writeJSON, ConflictError } from '../api.js';
 import { renderHeader, renderNav, requireAuth, showToast, escapeHtml, formatDate, uid, todayISO } from '../app.js';
 
+// 「試合」扱いの種別（旧データの '試合' も含めて互換維持）
+const GAME_EVENT_TYPES = ['試合', '分区試合', 'P協試合'];
+function isGameType(type) {
+  return GAME_EVENT_TYPES.includes(type);
+}
+
 renderHeader();
 renderNav('attendance');
 
@@ -227,7 +233,8 @@ function openEventDialog(ev, isEdit) {
             <label class="field-label">種別</label>
             <select class="field-select" name="type">
               <option value="練習" ${ev.type === '練習' ? 'selected' : ''}>練習</option>
-              <option value="試合" ${ev.type === '試合' ? 'selected' : ''}>試合</option>
+              <option value="分区試合" ${ev.type === '分区試合' ? 'selected' : ''}>分区試合</option>
+              <option value="P協試合" ${ev.type === 'P協試合' ? 'selected' : ''}>P協試合</option>
               <option value="懇親会" ${ev.type === '懇親会' ? 'selected' : ''}>懇親会</option>
               <option value="その他" ${ev.type === 'その他' ? 'selected' : ''}>その他</option>
             </select>
@@ -273,7 +280,7 @@ function openEventDialog(ev, isEdit) {
     try {
       // リンク済みの試合がある場合の同期処理
       if (newEv.gameId) {
-        if (newEv.type === '試合') {
+        if (isGameType(newEv.type)) {
           // 既存の試合の date/location を予定と同期
           const existing = gamesState.games.find((g) => g.id === newEv.gameId);
           if (existing) {

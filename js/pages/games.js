@@ -187,10 +187,13 @@ function renderGameCard(g) {
   `;
 }
 
+// 「試合」扱いの種別（旧データの '試合' も含めて互換維持）
+const GAME_EVENT_TYPES = ['試合', '分区試合', 'P協試合'];
+
 function openAddDialog() {
   // 区分が「試合」で、まだ試合にリンクされていない予定があれば、まず予定選択ピッカーを開く
   const linkableEvents = eventsState.events
-    .filter((e) => e.type === '試合' && !e.gameId)
+    .filter((e) => GAME_EVENT_TYPES.includes(e.type) && !e.gameId)
     .sort((a, b) => (b.date || '').localeCompare(a.date || ''));
   if (linkableEvents.length > 0) {
     openEventPicker(linkableEvents);
