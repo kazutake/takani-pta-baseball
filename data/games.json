@@ -71,18 +71,6 @@
           "batterId": "m_motkv9ascdpx",
           "result": "groundOut",
           "rbi": 0
-        },
-        {
-          "inning": 1,
-          "batterId": "m_motkv4fnrkmz",
-          "result": "flyOut",
-          "rbi": 0
-        },
-        {
-          "inning": 2,
-          "batterId": "m_motkvjfh8tbi",
-          "result": "flyOut",
-          "rbi": 0
         }
       ],
       "oppPlays": [],
