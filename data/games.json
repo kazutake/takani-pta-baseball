@@ -4,7 +4,7 @@
       "id": "g_motowgfpbpio",
       "date": "2026-05-10",
       "opponent": "桃一",
-      "ourScore": 1,
+      "ourScore": 0,
       "theirScore": 0,
       "isHome": false,
       "innings": [],
@@ -54,18 +54,6 @@
         }
       ],
       "ourPlays": [
-        {
-          "inning": 6,
-          "batterId": "m_motkwoito899",
-          "result": "triple",
-          "rbi": 1
-        },
-        {
-          "inning": 6,
-          "batterId": "m_motkwzcfqnxm",
-          "result": "flyOut",
-          "rbi": 0
-        },
         {
           "inning": 6,
           "batterId": "m_moth46wbgufq",
@@ -237,7 +225,7 @@
           "pitcherId": "m_motkwoito899"
         }
       ],
-      "result": "win",
+      "result": "draw",
       "finalized": false
     }
   ]
