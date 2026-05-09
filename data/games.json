@@ -57,12 +57,6 @@
       "oppPlays": [
         {
           "inning": 1,
-          "result": "groundOut",
-          "rbi": 0,
-          "pitcherId": "m_motkvjfh8tbi"
-        },
-        {
-          "inning": 1,
           "result": "strikeout",
           "rbi": 0,
           "pitcherId": "m_motkvjfh8tbi"
