@@ -55,18 +55,6 @@
       ],
       "ourPlays": [
         {
-          "inning": 6,
-          "batterId": "m_motkvdpsv10y",
-          "result": "otherOut",
-          "rbi": 0
-        },
-        {
-          "inning": 7,
-          "batterId": "m_motkv9ascdpx",
-          "result": "double",
-          "rbi": 0
-        },
-        {
           "inning": 7,
           "batterId": "m_motkv4fnrkmz",
           "result": "walk",
