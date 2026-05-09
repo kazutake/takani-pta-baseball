@@ -3,7 +3,7 @@
 
 // 4列グリッドで3行に綺麗に並ぶ順序:
 // 1行目: ヒット系 (4種)
-// 2行目: 出塁系 (四球/死球/エラー/他セーフ)
+// 2行目: 出塁系 + 特殊 (四球/死球/エラー/ダブルプレー)
 // 3行目: アウト系 (三振/フライ/ゴロ/他アウト)
 export const RESULT_TYPES = [
   { key: 'single', label: 'ヒット', short: '安' },
@@ -13,16 +13,18 @@ export const RESULT_TYPES = [
   { key: 'walk', label: '四球', short: '四' },
   { key: 'hbp', label: '死球', short: '死' },
   { key: 'reachedOnError', label: 'エラー', short: '失' },
-  { key: 'otherSafe', label: '他セーフ', short: '他S' },
+  { key: 'doublePlay', label: 'ダブルプレー', short: '併' },
   { key: 'strikeout', label: '三振', short: 'K' },
   { key: 'flyOut', label: 'フライ', short: '飛' },
   { key: 'groundOut', label: 'ゴロ', short: 'ゴ' },
   { key: 'otherOut', label: '他アウト', short: '他O' },
 ];
 
-export const OUT_RESULTS = ['strikeout', 'flyOut', 'groundOut', 'otherOut'];
+export const OUT_RESULTS = ['strikeout', 'flyOut', 'groundOut', 'otherOut', 'doublePlay'];
 export const HIT_RESULTS = ['single', 'double', 'triple', 'homeRun'];
 export const ON_BASE_NO_AB_RESULTS = ['walk', 'hbp']; // 打数に含めない
+// ダブルプレーは1打席で2アウト発生する特殊な結果
+export const DOUBLE_PLAY_RESULT = 'doublePlay';
 
 export function isOut(result) {
   return OUT_RESULTS.includes(result);
@@ -47,8 +49,15 @@ export function computeNextInning(plays) {
 }
 
 // あるイニングのアウト数
+// ダブルプレーは1打席で2アウト扱い
 export function outsInInning(plays, inning) {
-  return plays.filter((p) => p.inning === inning && isOut(p.result)).length;
+  let outs = 0;
+  for (const p of plays) {
+    if (p.inning !== inning) continue;
+    if (p.result === DOUBLE_PLAY_RESULT) outs += 2;
+    else if (isOut(p.result)) outs += 1;
+  }
+  return outs;
 }
 
 // あるイニングの得点 (RBI合計)
@@ -90,7 +99,7 @@ export function aggregateBattingFromPlays(memberId, plays) {
     singles: 0, doubles: 0, triples: 0, homeRuns: 0,
     walks: 0, hbp: 0,
     strikeouts: 0, flyOuts: 0, groundOuts: 0, reachedOnError: 0,
-    otherOuts: 0, otherSafes: 0,
+    otherOuts: 0, doublePlays: 0,
     rbis: 0,
     pa: 0,  // 打席数
     ab: 0,  // 打数 (PA - 四球 - 死球)
@@ -110,7 +119,7 @@ export function aggregateBattingFromPlays(memberId, plays) {
     else if (p.result === 'groundOut') r.groundOuts++;
     else if (p.result === 'reachedOnError') r.reachedOnError++;
     else if (p.result === 'otherOut') r.otherOuts++;
-    else if (p.result === 'otherSafe') r.otherSafes++;
+    else if (p.result === 'doublePlay') r.doublePlays++;
     r.rbis += p.rbi || 0;
   }
   r.hits = r.singles + r.doubles + r.triples + r.homeRuns;

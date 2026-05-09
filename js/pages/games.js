@@ -1055,7 +1055,7 @@ function openPlaysDialog(gameId) {
       // 3アウトで自動的に守備タブへ切替（最新イニングのみ）
       const outsAfterPA = outsInInning(plays, inningRecorded);
       const maxInning = plays.length > 0 ? Math.max(...plays.map((p) => p.inning)) : 1;
-      if (outsAfterPA === 3 && inningRecorded === maxInning) {
+      if (outsAfterPA >= 3 && inningRecorded === maxInning) {
         defenseEntryCollapsed = false;
         setTab('defense');
         renderDefenseTab();
@@ -1283,7 +1283,7 @@ function openPlaysDialog(gameId) {
       // 3アウトで自動的に攻撃タブへ切替（最新イニングのみ）
       const outsAfterPA = outsInInning(oppPlays, inningRecorded);
       const maxInning = oppPlays.length > 0 ? Math.max(...oppPlays.map((p) => p.inning)) : 1;
-      if (outsAfterPA === 3 && inningRecorded === maxInning) {
+      if (outsAfterPA >= 3 && inningRecorded === maxInning) {
         offenseEntryCollapsed = false;
         setTab('offense');
         renderOffenseTab();
