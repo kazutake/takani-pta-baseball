@@ -161,6 +161,12 @@
           "batterId": "m_motkwzcfqnxm",
           "result": "single",
           "rbi": 0
+        },
+        {
+          "inning": 4,
+          "batterId": "m_moth46wbgufq",
+          "result": "strikeout",
+          "rbi": 0
         }
       ],
       "oppPlays": [
