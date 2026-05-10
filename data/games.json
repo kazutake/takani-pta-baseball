@@ -149,6 +149,12 @@
           "batterId": "m_motkxo2u89qy",
           "result": "strikeout",
           "rbi": 0
+        },
+        {
+          "inning": 4,
+          "batterId": "m_motkwoito899",
+          "result": "walk",
+          "rbi": 0
         }
       ],
       "oppPlays": [
