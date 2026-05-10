@@ -199,6 +199,12 @@
           "result": "reachedOnError",
           "rbi": 1,
           "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 2,
+          "result": "flyOut",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
         }
       ],
       "result": "lose",
