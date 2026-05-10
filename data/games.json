@@ -253,6 +253,12 @@
           "result": "reachedOnError",
           "rbi": 0,
           "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 3,
+          "result": "reachedOnError",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
         }
       ],
       "result": "lose",
