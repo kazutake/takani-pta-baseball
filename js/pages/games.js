@@ -991,11 +991,13 @@ function openPlaysDialog(gameId) {
       </button>
     `).join('');
 
-    const recentPlays = [...plays].reverse().slice(0, 30);
+    // 1回 → 最終回の昇順で表示（同イニング内は入力順を維持）
+    const sortedPlays = plays
+      .map((p, realIdx) => ({ p, realIdx }))
+      .sort((a, b) => a.p.inning - b.p.inning);
     const playsList = plays.length === 0
       ? '<div class="card-meta" style="text-align:center;padding:12px">まだ打席が記録されていません</div>'
-      : recentPlays.map((p, idxRev) => {
-        const realIdx = plays.length - 1 - idxRev;
+      : sortedPlays.map(({ p, realIdx }) => {
         const m = memberById(p.batterId);
         return `
           <div class="play-row">
@@ -1218,11 +1220,13 @@ function openPlaysDialog(gameId) {
     `).join('');
 
     const curOppIdx = nextOppBatterIdx();
-    const recentPlays = [...oppPlays].reverse().slice(0, 30);
+    // 1回 → 最終回の昇順で表示（同イニング内は入力順を維持）
+    const sortedOppPlays = oppPlays
+      .map((p, realIdx) => ({ p, realIdx }))
+      .sort((a, b) => a.p.inning - b.p.inning);
     const playsList = oppPlays.length === 0
       ? '<div class="card-meta" style="text-align:center;padding:12px">まだ打席が記録されていません</div>'
-      : recentPlays.map((p, idxRev) => {
-        const realIdx = oppPlays.length - 1 - idxRev;
+      : sortedOppPlays.map(({ p, realIdx }) => {
         const pm = p.pitcherId ? memberById(p.pitcherId) : null;
         const batterStr = typeof p.oppBatterIdx === 'number' ? oppBatterLabel(p.oppBatterIdx) : '打順?';
         return `
