@@ -91,6 +91,12 @@
           "result": "single",
           "rbi": 0,
           "pitcherId": "m_motkvjfh8tbi"
+        },
+        {
+          "inning": 1,
+          "result": "walk",
+          "rbi": 0,
+          "pitcherId": "m_motkvjfh8tbi"
         }
       ],
       "result": "win",
